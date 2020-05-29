@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jax-b/deej"
-	"github.com/jax-b/deejDSP"
+	deejdsp "github.com/jax-b/deejDSP"
 )
 
 var (
@@ -52,7 +52,9 @@ func main() {
 	modlogger := d.NewNammedLogger("module")
 	serial := d.GetSerial()
 
-	deejSD, err := deejDSP.NewSerialSD(serial, modlogger)
+	deejSD, err := deejdsp.NewSerialSD(serial, modlogger)
+
+	deejSD.ListDir()
 
 	d.Start()
 

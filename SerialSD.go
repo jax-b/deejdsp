@@ -1,6 +1,7 @@
 package deejdsp
 
 import (
+	"errors"
 	"os"
 
 	"github.com/jax-b/deej"
@@ -29,11 +30,14 @@ func (serSD *SerialSD) ListDir() (string, error) {
 	serSD.logger.Info("SDCard File list")
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
 	SerialData := <-serSD.sio.ReadLine(serSD.logger)
+	returnText := SerialData
 	for SerialData != "" {
 		serSD.logger.Info(SerialData)
 		SerialData = <-serSD.sio.ReadLine(serSD.logger)
+		returnText = returnText + SerialData
 	}
 	serSD.sio.Start()
+	return returnText, nil
 }
 
 // Delete deletes a file off of the SD card
@@ -48,10 +52,11 @@ func (serSD *SerialSD) Delete(filename string) (string, error) {
 
 	if success == false {
 		serSD.logger.Errorw("Failed to delete file", filename)
-		return cmdKey
+		return cmdKey, errors.New("Cannot delete file")
 	}
 
 	serSD.sio.Start()
+	return cmdKey, nil
 }
 
 // SendFile Sends a file to the sd card
@@ -63,15 +68,20 @@ func (serSD *SerialSD) SendFile(filepath string, DestFilename string) error {
 	serSD.sio.WriteStringLine(serSD.logger, DestFilename)
 
 	f, err := os.Open(filepath)
+	if err != nil {
+		return err
+	}
 	defer f.Close()
 
 	b1 := make([]byte, 1)
 	n1, err := f.Read(b1)
 	for n1 > 0 {
-		serSD.sio.WriteBytes(b1)
+		serSD.sio.WriteBytes(serSD.logger, b1)
 		n1, err = f.Read(b1)
 	}
-	serSD.sio.WriteStringLine("EOF")
+	serSD.sio.WriteStringLine(serSD.logger, "EOF")
 
 	serSD.sio.Start()
+
+	return nil
 }
