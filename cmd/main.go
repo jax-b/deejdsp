@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/jax-b/deej"
+	"github.com/jax-b/deejDSP"
 )
 
 var (
@@ -47,7 +48,11 @@ func main() {
 	if err = d.Initialize(); err != nil {
 		named.Fatalw("Failed to initialize deej", "error", err)
 	}
-	deejSD := deej_display.NewSerialSD(d.Serial)
+
+	modlogger := d.NewNammedLogger("module")
+	serial := d.GetSerial()
+
+	deejSD, err := deejDSP.NewSerialSD(serial, modlogger)
 
 	d.Start()
 
