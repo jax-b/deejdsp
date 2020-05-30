@@ -54,8 +54,18 @@ func main() {
 
 	deejSD, err := deejdsp.NewSerialSD(serial, modlogger)
 
-	deejSD.ListDir()
+	test, _ := deejSD.ListDir()
+	fmt.Print(test)
+
+	deejSD.SendFile(".\\config.yaml", "config")
+
+	test, _ = deejSD.ListDir()
+	fmt.Print(test)
+
+	deejSD.Delete("config")
+
+	test, _ = deejSD.ListDir()
+	fmt.Print(test)
 
 	d.Start()
-
 }
