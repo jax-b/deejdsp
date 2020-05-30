@@ -9,7 +9,7 @@
 #define NUM_SLIDERS 6
 #define SERIALSPEED 115200
 #define NUM_DISPLAYS 6
-#define SerialTimeout 2000
+#define SERIALTIMEOUT 2000
 
 const uint8_t analogInputs[NUM_SLIDERS] = {18, 19, 20, 21, 9, 8};
 
@@ -34,7 +34,7 @@ void setup() {
   }
   Wire.begin();
   Serial.begin(SERIALSPEED);
-  Serial.setTimeout(2000);
+  Serial.setTimeout(SERIALTIMEOUT);
   Serial.print("INITBEGIN");
   for (int i = 0; i < NUM_DISPLAYS; i++) {
     Serial.print("DSP" + String(i) + "INIT ");
@@ -112,7 +112,7 @@ void checkForCommand() {
     String input = Serial.readStringUntil('\n');  // Read chars from serial monitor
 
     //If data takes to long
-    if(millis()-timeStart >= SerialTimeout) {
+    if(millis()-timeStart >= SERIALTIMEOUT) {
       Serial.println("TIMEOUT");
       return;
     }
@@ -154,7 +154,7 @@ void checkForCommand() {
         uint8_t portnumber = Serial.readStringUntil('\n').toInt();  // Read chars from Serial monitor
         
         //Get Stop Time and exit if timeout
-        if(millis()-timeStart >= SerialTimeout) {
+        if(millis()-timeStart >= SERIALTIMEOUT) {
           Serial.println("TIMEOUT");
         }
         else {
@@ -169,7 +169,7 @@ void checkForCommand() {
         //Get data from Serial
         String filename = Serial.readStringUntil('\n');  // Read chars from Serial monitor
         
-        if(millis()-timeStart >= SerialTimeout) {
+        if(millis()-timeStart >= SERIALTIMEOUT) {
           Serial.println("TIMEOUT");
         }
         else {
@@ -203,8 +203,8 @@ void checkForCommand() {
 
         //Get data from Serial
         String filename = Serial.readStringUntil('\n');  // Read chars from Serial monitor
-        
-        if(timeStart-millis() >= 1000) {
+
+        if(millis()-timeStart >= SERIALTIMEOUT) {
           Serial.println("TIMEOUT");
         }
         else {
@@ -226,7 +226,7 @@ void checkForCommand() {
         //Get data from Serial
         String filename = Serial.readStringUntil('\n');  // Read chars from Serial monitor
         
-        if(timeStart-millis() >= 1000) {
+        if(millis()-timeStart >= 1000) {
           Serial.println("TIMEOUT");
         }
         else {
@@ -290,17 +290,17 @@ void sdPutFile(const String filename) {
     Serial.read();
   }
   imgFile.close();
-  Serial.print("EOFDETECT");
+  Serial.println("EOFDETECT");
 }
 
 // SD Card delete file
 void sdDelete(const String filename) {
-  if (SD.exists(filename)){
-    Serial.print("FILENOTFOUND");
+  if (!SD.exists(filename)){
+    Serial.println("FILENOTFOUND");
   }
   else {
     SD.remove(filename);
-    Serial.print("FILEDELETED");
+    Serial.println("FILEDELETED");
   }
 }
 
@@ -392,6 +392,7 @@ void dspSetPage(uint8_t addr, uint8_t pstart, uint8_t pend) {
   dspSendCommand(addr, pend);
 }
 
+// turns the specified display off
 void dspOff(uint8_t addr){
   dspSendCommand(addr, OLED_DISPLAYOFF);
 }
@@ -401,6 +402,7 @@ void dspOn(uint8_t addr){
   dspSendCommand(addr, OLED_DISPLAYON);
 }
 
+// clears the display
 void dspClear(uint8_t addr){
   // go to zero and set end to full end
   dspSetColumn(addr, 0x00,0x7F);
