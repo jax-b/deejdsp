@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jax-b/deej"
-	deejdsp "github.com/jax-b/deejDSP"
+	"github.com/jax-b/deejdsp"
 )
 
 var (
@@ -52,20 +53,98 @@ func main() {
 	modlogger := d.NewNammedLogger("module")
 	serial := d.GetSerial()
 
-	deejSD, err := deejdsp.NewSerialSD(serial, modlogger)
+	serSD, err := deejdsp.NewSerialSD(serial, modlogger)
+	serTSD, err := deejdsp.NewSerialTSC(serial, modlogger)
+	serDSP, err := deejdsp.NewSerialDSP(serial, modlogger)
 
-	test, _ := deejSD.ListDir()
+	// Display Image Test
+	serTSD.SelectPort(0)
+	serDSP.SetImage("1.B")
+	serTSD.SelectPort(1)
+	serDSP.SetImage("2.B")
+	serTSD.SelectPort(2)
+	serDSP.SetImage("3.B")
+	serTSD.SelectPort(3)
+	serDSP.SetImage("4.B")
+	serTSD.SelectPort(4)
+	serDSP.SetImage("5.B")
+	serTSD.SelectPort(5)
+	serDSP.SetImage("THECHILD.B")
+
+	// Blink Test
+	serTSD.SelectPort(0)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(1)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(2)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(3)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(4)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(5)
+	serDSP.DisplayOff()
+
+	time.Sleep(500 * time.Millisecond)
+
+	serTSD.SelectPort(0)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(1)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(2)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(3)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(4)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(5)
+	serDSP.DisplayOn()
+
+	time.Sleep(500 * time.Millisecond)
+
+	serTSD.SelectPort(0)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(1)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(2)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(3)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(4)
+	serDSP.DisplayOff()
+	serTSD.SelectPort(5)
+	serDSP.DisplayOff()
+
+	time.Sleep(500 * time.Millisecond)
+
+	serTSD.SelectPort(0)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(1)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(2)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(3)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(4)
+	serDSP.DisplayOn()
+	serTSD.SelectPort(5)
+	serDSP.DisplayOn()
+
+	// List Dir Demo
+	test, _ := serSD.ListDir()
 	fmt.Print(test)
 
-	deejSD.SendFile(".\\config.yaml", "config")
+	// File Send Demo
+	// serSD.SendFile(".\\config.yaml", "config")
 
-	test, _ = deejSD.ListDir()
-	fmt.Print(test)
+	// test, _ = serSD.ListDir()
+	// fmt.Print(test)
 
-	deejSD.Delete("config")
+	// File Delete Demo
+	// serSD.Delete("config")
 
-	test, _ = deejSD.ListDir()
-	fmt.Print(test)
+	// test, _ = serSD.ListDir()
+	// fmt.Print(test)
 
 	d.Start()
 }
