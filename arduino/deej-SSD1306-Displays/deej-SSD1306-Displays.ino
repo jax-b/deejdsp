@@ -424,8 +424,10 @@ void dspSetImage(uint8_t addr, String imagefilename) {
   // open the image file
   // also this file should almost allways contain 8192 bytes
   File imgFile = SD.open(imagefilename);
-  // clear the display
-  dspClear(addr);
+  
+  // clear the display not needed as it will get replaced anyways
+  // dspClear(addr);
+
   // initialize some temp vars
   int inputChar;
   int maxPages = 8;
