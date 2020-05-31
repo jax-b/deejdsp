@@ -271,11 +271,16 @@ void sdPrintDirectory(File dir, int numTabs) {
 
 // SD Card send file
 void sdPutFile(const String filename) {
-  Serial.println("Starting File Write");
-  Serial.println("Waiting for EOF");
+  if (SD.exists(filename)) {
+    Serial.println("OVERWRITE");
+    SD.remove(filename);
+  }
+  
+  Serial.println("WAITINGEOF");
+
   File imgFile = SD.open(filename, FILE_WRITE);
   int16_t last3[3] = {-1,-1,-1};
-  while ( last3[0] != 'E' && last3[1] != 'O' && last3[2] != 'F' ) {
+  while ( !(last3[0] == 'E' && last3[1] == 'O' && last3[2] == 'F') ) {
     if ( last3[0] != -1 ) {
       imgFile.write(last3[0]);
     }
