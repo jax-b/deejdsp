@@ -101,6 +101,7 @@ func (serSD *SerialSD) SendFile(filepath string, DestFilename string) error {
 	for n1 > 0 {
 		serSD.sio.WriteBytes(serSD.logger, b1)
 		n1, err = f.Read(b1)
+		time.Sleep(time.Millisecond * 2)
 	}
 	serSD.sio.WriteStringLine(serSD.logger, "EOF")
 
