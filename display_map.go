@@ -61,5 +61,5 @@ func (m *displayMap) String() string {
 		targetCount += len(value)
 	}
 
-	return fmt.Sprintf("<%d pictures mapped to %d displays>", displayCount, targetCount)
+	return fmt.Sprintf("<%d displays mapped to %d pictures>", displayCount, targetCount)
 }
