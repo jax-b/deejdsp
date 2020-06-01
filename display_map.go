@@ -27,7 +27,7 @@ func (m *displayMap) iterate(f func(int, []string)) {
 	}
 }
 
-func (m *displayMap) get(key int) ([]string, bool) {
+func (m *displayMap) Get(key int) ([]string, bool) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -42,17 +42,24 @@ func (m *displayMap) set(key int, value []string) {
 	m.m[key] = value
 }
 
+func (m *displayMap) Length() int {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	return len(m.m)
+}
+
 func (m *displayMap) String() string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	sliderCount := 0
+	displayCount := 0
 	targetCount := 0
 
 	for _, value := range m.m {
-		sliderCount++
+		displayCount++
 		targetCount += len(value)
 	}
 
-	return fmt.Sprintf("<%d pictures mapped to %d displays>", sliderCount, targetCount)
+	return fmt.Sprintf("<%d pictures mapped to %d displays>", displayCount, targetCount)
 }

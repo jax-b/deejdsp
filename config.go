@@ -77,6 +77,7 @@ func (cc *DSPCanonicalConfig) Load() error {
 
 	return nil
 }
+
 func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error {
 
 	// start by loading the slider mapping because it's the only failable part for now
