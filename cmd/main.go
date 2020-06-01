@@ -53,98 +53,63 @@ func main() {
 	modlogger := d.NewNammedLogger("module")
 	serial := d.GetSerial()
 
-	serSD, err := deejdsp.NewSerialSD(serial, modlogger)
-	serTSD, err := deejdsp.NewSerialTSC(serial, modlogger)
+	//Set up all modules
+	// serSD, err := deejdsp.NewSerialSD(serial, modlogger)
+	serTSC, err := deejdsp.NewSerialTSC(serial, modlogger)
 	serDSP, err := deejdsp.NewSerialDSP(serial, modlogger)
+	cfgDSP, err := deejdsp.NewDSPConfig(modlogger)
 
-	// Display Image Test
-	serTSD.SelectPort(0)
-	serDSP.SetImage("1.B")
-	serTSD.SelectPort(1)
-	serDSP.SetImage("2.B")
-	serTSD.SelectPort(2)
-	serDSP.SetImage("3.B")
-	serTSD.SelectPort(3)
-	serDSP.SetImage("4.B")
-	serTSD.SelectPort(4)
-	serDSP.SetImage("5.B")
-	serTSD.SelectPort(5)
-	serDSP.SetImage("THECHILD.B")
+	cfgDSP.Load()
 
-	// Blink Test
-	serTSD.SelectPort(0)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(1)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(2)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(3)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(4)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(5)
-	serDSP.DisplayOff()
+	for i := 0; i <= cfgDSP.DisplayMapping.Length(); i++ {
+		value, _ := cfgDSP.DisplayMapping.Get(i)
 
-	time.Sleep(500 * time.Millisecond)
+		serTSC.SelectPort(uint8(i))
 
-	serTSD.SelectPort(0)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(1)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(2)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(3)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(4)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(5)
-	serDSP.DisplayOn()
+		if len(value) > 0 {
+			serDSP.SetImage(string(value[0]))
+			serDSP.DisplayOn()
+			modlogger.Named("Display").Infof("%d: %q", i, string(value[0]))
+		} else {
+			serDSP.DisplayOff()
+		}
+	}
 
-	time.Sleep(500 * time.Millisecond)
+	// Detect Config Reload
+	go func() {
+		configReloadedChannel := d.SubscribeToChanges()
 
-	serTSD.SelectPort(0)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(1)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(2)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(3)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(4)
-	serDSP.DisplayOff()
-	serTSD.SelectPort(5)
-	serDSP.DisplayOff()
+		const stopDelay = 50 * time.Millisecond
 
-	time.Sleep(500 * time.Millisecond)
+		for {
+			select {
+			case <-configReloadedChannel:
+				serial.Pause()
 
-	serTSD.SelectPort(0)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(1)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(2)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(3)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(4)
-	serDSP.DisplayOn()
-	serTSD.SelectPort(5)
-	serDSP.DisplayOn()
+				cfgDSP.Load()
 
-	// List Dir Demo
-	test, _ := serSD.ListDir()
-	fmt.Print(test)
+				// let the connection close
+				<-time.After(stopDelay)
 
-	// File Send Demo
-	// serSD.SendFile(".\\config.yaml", "config")
+				for i := 0; i <= cfgDSP.DisplayMapping.Length(); i++ {
+					value, _ := cfgDSP.DisplayMapping.Get(i)
 
-	// test, _ = serSD.ListDir()
-	// fmt.Print(test)
+					serTSC.SelectPort(uint8(i))
 
-	// File Delete Demo
-	// serSD.Delete("config")
+					if len(value) > 0 {
+						serDSP.DisplayOn()
+						serDSP.SetImage(string(value[0]))
+						modlogger.Named("Display").Infof("%d: %q", i, string(value[0]))
+					} else {
+						serDSP.DisplayOff()
+					}
+				}
 
-	// test, _ = serSD.ListDir()
-	// fmt.Print(test)
+				serial.Start()
+			}
+		}
+	}()
 
 	d.Start()
+
 }
