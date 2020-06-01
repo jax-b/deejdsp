@@ -42,6 +42,8 @@ github.com/gopherjs/gopherwasm v1.1.0 h1:fA2uLoctU5+T3OhOn2vYP0DVT6pxc7xhTlBB1pa
 github.com/gopherjs/gopherwasm v1.1.0/go.mod h1:SkZ8z7CWBz5VXbhJel8TxCmAcsQqzgWGR/8nMhyhZSI=
 github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4 h1:G2ztCwXov8mRvP0ZfjE6nAlaCX2XbykaeHdbT6KwDz0=
 github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4/go.mod h1:2RvX5ZjVtsznNZPEt4xwJXNJrM3VTZoQf7V6gk0ysvs=
+github.com/jax-b/deej v0.9.6-pre3 h1:17aLd/58EaV7rLWK0hJ5yZy8r14wFUnJyKeieZLfJvE=
+github.com/jax-b/deej v0.9.6-pre3/go.mod h1:eg04HPNch/lrkFVwo1PdeM1eeqQhKpqT39+lQweZ0Ho=
 github.com/jfreymuth/pulse v0.0.0-20200506145638-1534c4af9659 h1:DRA4BuRlhEILiud720WFWqqdADPzp1jTjQvyCr/PP80=
 github.com/jfreymuth/pulse v0.0.0-20200506145638-1534c4af9659/go.mod h1:cpYspI6YljhkUf1WLXLLDmeaaPFc3CnGLjDZf9dZ4no=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
