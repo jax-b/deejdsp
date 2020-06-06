@@ -55,7 +55,7 @@ func main() {
 
 	//Set up all modules
 	// serSD, err := deejdsp.NewSerialSD(serial, modlogger)
-	serTSC, err := deejdsp.NewSerialTSC(serial, modlogger)
+	serTSC, err := deejdsp.NewSerialTCA(serial, modlogger)
 	serDSP, err := deejdsp.NewSerialDSP(serial, modlogger)
 	cfgDSP, err := deejdsp.NewDSPConfig(modlogger)
 

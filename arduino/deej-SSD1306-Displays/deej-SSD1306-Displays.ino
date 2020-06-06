@@ -145,9 +145,9 @@ void checkForCommand() {
         reboot();
       }
 
-      // Select Port on TSC9548A
+      // Select Port on TCA9548A
       // Following this command send the port number on a new line
-      else if ( input.equalsIgnoreCase("deej.modules.TSC9548A.select")== true) {
+      else if ( input.equalsIgnoreCase("deej.modules.TCA9548A.select")== true) {
         timeStart = millis();
 
         //Get data from Serial
@@ -309,7 +309,7 @@ void sdDelete(const String filename) {
   }
 }
 
-// TSC9548A IIC,IIC,I2C multiplexor port select 
+// TCA9548A IIC,IIC,I2C multiplexor port select 
 void tcaselect(uint8_t addr, uint8_t i) {
   if (i > 7) return;
  
