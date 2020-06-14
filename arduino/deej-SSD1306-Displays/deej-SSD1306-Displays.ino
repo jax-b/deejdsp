@@ -1,7 +1,7 @@
 #include "arduino.h"
 #include <SPI.h>
 #include <Wire.h>
-#include <SD.h>
+#include "SdFat.h"
 #include "ssd1306CMDS.h"
 #include <avr/wdt.h>
 
@@ -11,7 +11,7 @@
 #define NUM_DISPLAYS 6
 #define SERIALTIMEOUT 2000
 
-const uint8_t analogInputs[NUM_SLIDERS] = {18, 19, 20, 21, 9, 8};
+const uint8_t analogInputs[NUM_SLIDERS] = {A0,A1,A9,A6,A7,A8};
 
 //IIC and I2C are the same thing
 #define IICMULTIPLEXADDR 0x70
@@ -21,12 +21,14 @@ const uint8_t analogInputs[NUM_SLIDERS] = {18, 19, 20, 21, 9, 8};
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
-#define SDCSPIN 7
+#define SDCSPIN 5
 
 uint16_t analogSliderValues[NUM_SLIDERS];
 
 // Constend Send
 bool pushSliderValuesToPC = false;
+
+SdFat sd;
 
 void setup() { 
   for (uint8_t i = 0; i < NUM_SLIDERS; i++) {
@@ -35,18 +37,26 @@ void setup() {
   Wire.begin();
   Serial.begin(SERIALSPEED);
   Serial.setTimeout(SERIALTIMEOUT);
-  Serial.print("INITBEGIN");
+  Serial.print("INITBEGIN ");
+  
+  Serial.print("SDINIT ");
+  if (!sd.begin(SDCSPIN, SD_SCK_MHZ(50))){
+    Serial.println("SDERROR ");
+    sd.initErrorHalt();
+    delay(5000);
+    reboot();
+  }
+  
   for (int i = 0; i < NUM_DISPLAYS; i++) {
     Serial.print("DSP" + String(i) + "INIT ");
     tcaselect(IICMULTIPLEXADDR, i);
     dspInit(IICDSPADDR);
     dspClear(IICDSPADDR);
+//    dspSendCommand(IICDSPADDR, SSD1306_INVERTDISPLAY);
+//    for (int j = 0; j <= i; j++) {
+//      dspSendData(IICDSPADDR, 0xFF);
+//    }
 //    dspSendData(IICDSPADDR, i+1);
-  }
-  Serial.print("SDINIT ");
-  if (!SD.begin(SDCSPIN)){
-    Serial.println("SDERROR ");
-    while(1);
   }
   Serial.println("INITDONE");
 }
@@ -173,7 +183,7 @@ void checkForCommand() {
           Serial.println("TIMEOUT");
         }
         else {
-          if (!SD.exists(filename)){
+          if (!sd.exists(filename.c_str())){
             Serial.print("FILENOTFOUND");
           }
           else {
@@ -214,7 +224,7 @@ void checkForCommand() {
       
       // List the files on the sd card
       else if ( input.equalsIgnoreCase("deej.modules.sd.list") == true){
-        File root = SD.open("/");
+        File root = sd.open("/");
         sdPrintDirectory(root, 0);
       }
 
@@ -271,14 +281,18 @@ void sdPrintDirectory(File dir, int numTabs) {
 
 // SD Card send file
 void sdPutFile(const String filename) {
-  if (SD.exists(filename)) {
+  char charbuff[filename.length()+1];
+  
+  filename.toCharArray(charbuff, filename.length()+1);
+  
+  if (sd.exists(charbuff)) {
     Serial.println("OVERWRITE");
-    SD.remove(filename);
+    sd.remove(charbuff);
   }
   
   Serial.println("WAITINGEOF");
 
-  File imgFile = SD.open(filename, FILE_WRITE);
+  File imgFile = sd.open(filename, O_WRITE );
   int16_t last3[3] = {-1,-1,-1};
   while ( !(last3[0] == 'E' && last3[1] == 'O' && last3[2] == 'F') ) {
     if ( last3[0] != -1 ) {
@@ -291,20 +305,25 @@ void sdPutFile(const String filename) {
       last3[2] = nextByte;
     }
   }
+  imgFile.sync(); 
+  imgFile.close();
   while(Serial.available() > 0) {
     Serial.read();
   }
-  imgFile.close();
   Serial.println("EOFDETECT");
 }
 
 // SD Card delete file
 void sdDelete(const String filename) {
-  if (!SD.exists(filename)){
+  char charbuff[filename.length()+1];
+  
+  filename.toCharArray(charbuff, filename.length()+1);
+  
+  if (!sd.exists(charbuff)){
     Serial.println("FILENOTFOUND");
   }
   else {
-    SD.remove(filename);
+    sd.remove(charbuff);
     Serial.println("FILEDELETED");
   }
 }
@@ -341,8 +360,9 @@ void dspInit(uint8_t addr){
   // see this page for the sequence for the sequence i used:
   // https://iotexpert.com/2019/08/07/debugging-ssd1306-display-problems/
 
-  const char initializeCmds[]={
-    //////// Fundamental Commands
+  const uint8_t initializeCmds[]={
+    // Init sequence for Adafruit 128x64 OLED module
+     //////// Fundamental Commands
     OLED_DISPLAYOFF,          // 0xAE Screen Off
     OLED_SETCONTRAST,         // 0x81 Set contrast control
     0x7F,                     // 0-FF ... default half way
@@ -376,7 +396,7 @@ void dspInit(uint8_t addr){
     OLED_DISPLAYON,           // 0xAF  //Set display on
   };
   
-  for(char i=0;i<25;i++){
+  for( uint8_t i=0;i<25;i++){
     dspSendCommand(addr, initializeCmds[i]);
   }
 }
@@ -404,7 +424,7 @@ void dspOff(uint8_t addr){
 
 // turns the specified display on
 void dspOn(uint8_t addr){
-  dspSendCommand(addr, OLED_DISPLAYON);
+  dspSendCommand(addr, OLED_DISPLAYON );
 }
 
 // clears the display
@@ -423,13 +443,13 @@ void dspClear(uint8_t addr){
 void dspSetImage(uint8_t addr, String imagefilename) {
   // open the image file
   // also this file should almost allways contain 8192 bytes
-  File imgFile = SD.open(imagefilename);
+  File imgFile = sd.open(imagefilename, O_READ);
   
   // clear the display not needed as it will get replaced anyways
   // dspClear(addr);
 
   // initialize some temp vars
-  int inputChar;
+  int16_t inputChar = 0;
   int maxPages = 8;
 
   // loop through each page 
