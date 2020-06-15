@@ -7,8 +7,8 @@ This uses my modifed fork of deej. This is still in the development phase but ex
 3. Arrange a image in the center of the screen
 4. Convert image to .b file format see [jax-b\ssd1306FilePrep](https://github.com/jax-b/ssd1306FilePrep)
 5. Add config file option for auto generate image (req 1-3)
-  - this will use a sha-1 hash of the process name truncated to 8 characters in order to prevent confilt with user generated images
-  - if the file does not exist on the end device it will be generated and sent
+    - this will use a sha-1 hash of the process name truncated to 8 characters in order to prevent confilt with user generated images
+    - if the file does not exist on the end device it will be generated and sent
 6. Find free images for other deej config options (master, system, mic) 
 ## You can view my wireing guide
 ![EasyEDA](https://image.easyeda.com/histories/df4c1db5c05449faacae832d4a9c00cf.png)
