@@ -5,7 +5,7 @@ This uses my modifed fork of deej. This is still in the development phase but ex
 1. Add Taskbar send File
 2. Get a image from a session
 3. Arrange a image in the center of the screen
-4. Convert image to .b file format[See jax-b\ssd1306FilePrep] (https://github.com/jax-b/ssd1306FilePrep]
+4. Convert image to .b file format [See jax-b\ssd1306FilePrep] (https://github.com/jax-b/ssd1306FilePrep)
 5. Add config file option for auto generate image (req 1-3)
   - this will use a sha-1 hash of the process name truncated to 8 characters in order to prevent confilt with user generated images
   - if the file does not exist on the end device it will be generated and sent
