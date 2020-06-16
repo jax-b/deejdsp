@@ -17,8 +17,8 @@ Sends one set of values sent as 'x|x|...|x' with x being the analog value
 Sends one set of values as 'Slider #n:x mv | Slider #n:x mv | ... | Slider #n:x mv' with n being the slider number and x being the value
 ##### deej.core.reboot
 Reboots the microcontroler (the serial port will have to be reopened)
-##### deej.modules.TSC9548A.select
-Selects a port on the TSC9548A port range is 0-7 and send the port number as a new line
+##### deej.modules.TCA9548A.select
+Selects a port on the TCA9548A port range is 0-7 and send the port number as a new line
 ##### deej.modules.display.setimage
 Sets a image on the display. Following this command send the filename on a new line
 ##### deej.modules.display.off
