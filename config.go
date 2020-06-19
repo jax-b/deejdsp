@@ -14,11 +14,13 @@ import (
 // DSPCanonicalConfig config of DSP
 type DSPCanonicalConfig struct {
 	DisplayMapping *displayMap
+	StartupDelay   int
 	logger         *zap.SugaredLogger
 }
 
 type marshalledConfig struct {
 	DisplayMapping map[int]interface{} `yaml:"display_mapping"`
+	StartupDelay   int                 `yaml:"startup_delay"`
 }
 
 var defaultDisplayMapping = func() *displayMap {
@@ -73,7 +75,7 @@ func (cc *DSPCanonicalConfig) Load() error {
 
 	cc.logger.Info("Loaded config successfully")
 	cc.logger.Infow("Config values",
-		"displayMapping", cc.DisplayMapping)
+		"displayMapping", cc.DisplayMapping, "startupDelay", cc.StartupDelay)
 
 	return nil
 }
@@ -83,7 +85,7 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 	// start by loading the slider mapping because it's the only failable part for now
 	if mc.DisplayMapping == nil {
 		cc.logger.Warnw("Missing key in config, using default value",
-			"key", "slider_mapping",
+			"key", "display_mapping",
 			"value", defaultDisplayMapping)
 
 		cc.DisplayMapping = defaultDisplayMapping
@@ -108,7 +110,7 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 
 			// we can't directly type-assert to a []string, so we must check each item. yup, that sucks
 			case []interface{}:
-				sliderItems := []string{}
+				displayItems := []string{}
 
 				for _, listItem := range typedValue {
 
@@ -129,11 +131,11 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 
 					// ignore empty strings
 					if listItemStr != "" {
-						sliderItems = append(sliderItems, listItemStr)
+						displayItems = append(displayItems, listItemStr)
 					}
 				}
 
-				displayMapping.set(key, sliderItems)
+				displayMapping.set(key, displayItems)
 			default:
 				cc.logger.Warnw("Invalid value for slider mapping key",
 					"key", key,
@@ -146,5 +148,15 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 
 		cc.DisplayMapping = displayMapping
 	}
+
+	if mc.StartupDelay <= 0 {
+		cc.logger.Warnw("Missing key in config, using default value",
+			"key", "startup_delay",
+			"value", mc.StartupDelay)
+		cc.StartupDelay = 50
+	} else {
+		cc.StartupDelay = mc.StartupDelay
+	}
+
 	return nil
 }
