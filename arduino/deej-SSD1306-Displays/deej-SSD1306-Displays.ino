@@ -34,7 +34,7 @@ bool pushSliderValuesToPC = false;
 
 SdFat sd;
 
-string outboundCommands = "";
+String outboundCommands = "";
 
 void setup() { 
   for (uint8_t i = 0; i < NUM_SLIDERS; i++) {
@@ -104,9 +104,9 @@ void sendSliderValues() {
       Serial.print("|");
     }
   }
-  if outboundCommands != "" {
-    serial.print(":");
-    serial.print(outboundCommands);
+  if (outboundCommands != "" ){
+    Serial.print(":");
+    Serial.print(outboundCommands);
     outboundCommands = "";
   }
 
@@ -114,8 +114,8 @@ void sendSliderValues() {
 }
 
 void addCommand(String cmd) {
-  if outboundCommands != "" {
-    outboundCommands += "|"
+  if( outboundCommands != "" ){
+    outboundCommands += "|";
   }
   outboundCommands += cmd;
 }
