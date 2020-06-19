@@ -5,13 +5,17 @@
 #include "ssd1306CMDS.h"
 #include <avr/wdt.h>
 
+//Microcontroller type
+//#define MCU32U4 1
+#define MCUA328P 1
+
 //You must Hard Code in the number of Sliders in
 #define NUM_SLIDERS 6
 #define SERIALSPEED 115200
 #define NUM_DISPLAYS 6
 #define SERIALTIMEOUT 2000
 
-const uint8_t analogInputs[NUM_SLIDERS] = {A0,A1,A9,A6,A7,A8};
+const uint8_t analogInputs[NUM_SLIDERS] = {A0,A1,A2,A3,A6,A7};
 
 //IIC and I2C are the same thing
 #define IICMULTIPLEXADDR 0x70
@@ -29,6 +33,8 @@ uint16_t analogSliderValues[NUM_SLIDERS];
 bool pushSliderValuesToPC = false;
 
 SdFat sd;
+
+string outboundCommands = "";
 
 void setup() { 
   for (uint8_t i = 0; i < NUM_SLIDERS; i++) {
@@ -75,9 +81,13 @@ void loop() {
 }
 
 void reboot() {
+#if MCU32U4
   wdt_disable();
   wdt_enable(WDTO_30MS);
   while (1) {}
+#elif MCUA328P
+  asm volatile ("  jmp 0");  
+#endif
 }
 
 void updateSliderValues() {
@@ -87,17 +97,27 @@ void updateSliderValues() {
 }
 
 void sendSliderValues() {
-  String builtString = String("");
-
   for (uint8_t i = 0; i < NUM_SLIDERS; i++) {
-    builtString += String((int)analogSliderValues[i]);
+    Serial.print(analogSliderValues[i]);
 
     if (i < NUM_SLIDERS - 1) {
-      builtString += String("|");
+      Serial.print("|");
     }
   }
-  
-  Serial.println(builtString);
+  if outboundCommands != "" {
+    serial.print(":");
+    serial.print(outboundCommands);
+    outboundCommands = "";
+  }
+
+  Serial.println();
+}
+
+void addCommand(String cmd) {
+  if outboundCommands != "" {
+    outboundCommands += "|"
+  }
+  outboundCommands += cmd;
 }
 
 void printSliderValues() {
@@ -149,7 +169,7 @@ void checkForCommand() {
       else if ( input.equalsIgnoreCase("deej.core.values.HR") == true ) {
         printSliderValues();
       }
-
+      
       // Reboot MCU
       else if ( input.equalsIgnoreCase("deej.core.reboot") == true ) {
         reboot();
@@ -190,6 +210,9 @@ void checkForCommand() {
             dspSetImage(IICDSPADDR,filename);
           }
         }
+        // Any Time intensive calls should be monitored by deej
+        // Will waitfor DONE
+        Serial.println("DONE");
       }
 
       // Turn a display off
@@ -220,12 +243,18 @@ void checkForCommand() {
         else {
           sdPutFile(filename);
         }
+        // Any Time intensive calls should be monitored by deej
+        // Will waitfor DONE
+        Serial.println("DONE");
       }
       
       // List the files on the sd card
       else if ( input.equalsIgnoreCase("deej.modules.sd.list") == true){
         File root = sd.open("/");
         sdPrintDirectory(root, 0);
+        // Any Time intensive calls should be monitored by deej
+        // Will waitfor DONE
+        Serial.println("DONE");
       }
 
       // delete a file on the sd card
@@ -265,18 +294,19 @@ void sdPrintDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       Serial.print('\t');
     }
-    Serial.print(entry.name());
+    char filename[20];
+    entry.getName(filename, 20);
+    Serial.print(filename);
     if (entry.isDirectory()) {
       Serial.println("/");
       sdPrintDirectory(entry, numTabs + 1);
     } else {
       // files have sizes, directories do not
-      Serial.print("\t\t");
+      Serial.print(",");
       Serial.println(entry.size(), DEC);
     }
     entry.close();
   }
-  Serial.println("DONE");
 }
 
 // SD Card send file
@@ -462,16 +492,15 @@ void dspSetImage(uint8_t addr, String imagefilename) {
     int CharsLeftInLine = 128;
     while  (CharsLeftInLine > 0 && inputChar != -1){
       inputChar = imgFile.read();
-      Serial.print(char(inputChar));
+      // Serial.print(char(inputChar));
       if(inputChar == -1){
         break;
       }
       dspSendData(addr, inputChar);
       CharsLeftInLine--;
     }
-    Serial.println();
+    // Serial.println();
     maxPages--;
   }
   imgFile.close();
-  Serial.println("\nDSPWRITEDONE");
 }
