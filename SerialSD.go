@@ -2,8 +2,8 @@ package deejdsp
 
 import (
 	"bufio"
+	"errors"
 	"io"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -49,9 +49,14 @@ Loop:
 		case <-time.After(1 * time.Second):
 			break Loop
 		case SerialData = <-lineChannel:
-			returnText = returnText + SerialData
+			if SerialData == "DONE" {
+				break Loop
+			} else {
+				returnText = returnText + SerialData
+			}
 		}
 	}
+
 	lineChannel = nil
 
 	if resumeAfter {
@@ -83,6 +88,11 @@ Loop:
 		case <-time.After(250 * time.Millisecond):
 			break Loop
 		case <-lineChannel:
+			if SerialData == "DONE" {
+				break Loop
+			} else {
+				returnText = returnText + SerialData
+			}
 		}
 	}
 
@@ -113,13 +123,8 @@ func (serSD *SerialSD) SendFile(filepath string, DestFilename string) error {
 
 	f, err := os.Open(filepath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	defer func() {
-		if err = f.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
 
 	r := bufio.NewReader(f)
 	b := make([]byte, fsize)
@@ -129,25 +134,46 @@ func (serSD *SerialSD) SendFile(filepath string, DestFilename string) error {
 		return err
 	}
 	serSD.sio.WriteBytes(serSD.logger, b[0:n])
-
 	serSD.sio.WriteStringLine(serSD.logger, "EOF")
-
 	//clear status messages
 	lineChannel := serSD.sio.ReadLine(serSD.logger)
 
+	// Watch for done message since this is time intensive
+	// If it takes to long exit
 Loop:
 	for {
 		select {
-		case <-time.After(250 * time.Millisecond):
-			break Loop
-		case <-lineChannel:
+		case <-time.After(500 * time.Millisecond):
+			lineChannel = nil
+
+			if err = f.Close(); err != nil {
+				return err
+			}
+
+			if resumeAfter {
+				serSD.sio.Start()
+			}
+			return errors.New("Timeout (waiting for arduino)")
+		case msg := <-lineChannel:
+			msg = strings.TrimSuffix(msg, "\r\n")
+			if msg == "DONE" {
+				break Loop
+			} else if msg == "" {
+			} else {
+				serSD.logger.Info(msg)
+			}
 		}
 	}
 
 	lineChannel = nil
 
+	if err = f.Close(); err != nil {
+		return err
+	}
+
 	if resumeAfter {
 		serSD.sio.Start()
 	}
+
 	return nil
 }

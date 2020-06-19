@@ -1,6 +1,10 @@
 package deejdsp
 
 import (
+	"errors"
+	"strings"
+	"time"
+
 	"github.com/jax-b/deej"
 	"go.uber.org/zap"
 )
@@ -65,6 +69,30 @@ func (serDSP *SerialDSP) SetImage(filename string) error {
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.setimage")
 	serDSP.sio.WriteStringLine(serDSP.logger, filename)
+
+	lineChannel := serDSP.sio.ReadLine(serDSP.logger)
+
+Loop:
+	for {
+		select {
+		case <-time.After(350 * time.Millisecond):
+			lineChannel = nil
+
+			if resumeAfter {
+				serDSP.sio.Start()
+			}
+			return errors.New("TIMEOUT")
+		case msg := <-lineChannel:
+			msg = strings.TrimSuffix(msg, "\r\n")
+			if msg == "DONE" {
+				break Loop
+			} else {
+				serDSP.logger.Info(msg)
+			}
+		}
+	}
+
+	lineChannel = nil
 
 	if resumeAfter {
 		serDSP.sio.Start()
