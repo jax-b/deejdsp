@@ -11,8 +11,9 @@ import (
 
 // SerialDSP stuct for Serial Dispaly Objects
 type SerialDSP struct {
-	sio    *deej.SerialIO
-	logger *zap.SugaredLogger
+	sio      *deej.SerialIO
+	logger   *zap.SugaredLogger
+	cmddelay time.Duration
 }
 
 // NewSerialDSP Creates a new DSP object
@@ -25,6 +26,11 @@ func NewSerialDSP(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialDSP, er
 	return serDSP, nil
 }
 
+// SetTimeDelay sets the time to delay after a command has been executed
+func (serDSP *SerialDSP) SetTimeDelay(delay time.Duration) {
+	serDSP.cmddelay = delay
+}
+
 // DisplayOn turns the dislpay on
 func (serDSP *SerialDSP) DisplayOn() error {
 	resumeAfter := serDSP.sio.IsRunning()
@@ -34,6 +40,10 @@ func (serDSP *SerialDSP) DisplayOn() error {
 	}
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.on")
+
+	if serDSP.cmddelay > (time.Microsecond * 1) {
+		time.Sleep(serDSP.cmddelay)
+	}
 
 	if resumeAfter {
 		serDSP.sio.Start()
@@ -52,6 +62,10 @@ func (serDSP *SerialDSP) DisplayOff() error {
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.off")
 
+	if serDSP.cmddelay > (time.Microsecond * 1) {
+		time.Sleep(serDSP.cmddelay)
+	}
+
 	if resumeAfter {
 		serDSP.sio.Start()
 	}
@@ -68,6 +82,7 @@ func (serDSP *SerialDSP) SetImage(filename string) error {
 	}
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.setimage")
+	time.Sleep(5 * time.Millisecond)
 	serDSP.sio.WriteStringLine(serDSP.logger, filename)
 
 	lineChannel := serDSP.sio.ReadLine(serDSP.logger)
@@ -81,6 +96,12 @@ Loop:
 			if resumeAfter {
 				serDSP.sio.Start()
 			}
+
+			if serDSP.cmddelay > (time.Microsecond * 1) {
+				serDSP.logger.Infof("Sleeping for cmd: %s milliseconds", serDSP.cmddelay)
+				time.Sleep(serDSP.cmddelay)
+			}
+
 			return errors.New("TIMEOUT")
 		case msg := <-lineChannel:
 			msg = strings.TrimSuffix(msg, "\r\n")
@@ -93,6 +114,11 @@ Loop:
 	}
 
 	lineChannel = nil
+
+	if serDSP.cmddelay > (time.Microsecond * 1) {
+		// serDSP.logger.Infof("Sleeping for cmd: %s milliseconds", serDSP.cmddelay)
+		time.Sleep(serDSP.cmddelay)
+	}
 
 	if resumeAfter {
 		serDSP.sio.Start()

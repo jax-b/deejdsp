@@ -3,6 +3,7 @@ package deejdsp
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/jax-b/deej"
 	"go.uber.org/zap"
@@ -10,8 +11,9 @@ import (
 
 // SerialTCA strut for serial objects
 type SerialTCA struct {
-	sio    *deej.SerialIO
-	logger *zap.SugaredLogger
+	sio      *deej.SerialIO
+	logger   *zap.SugaredLogger
+	cmddelay time.Duration
 }
 
 // NewSerialTCA Creates a new TCA object
@@ -22,6 +24,11 @@ func NewSerialTCA(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialTCA, er
 		logger: sdlogger,
 	}
 	return serTCA, nil
+}
+
+// SetTimeDelay sets the time to delay after a command has been executed
+func (serTCA *SerialTCA) SetTimeDelay(delay time.Duration) {
+	serTCA.cmddelay = delay
 }
 
 // SelectPort Slect the port number on the TCA9548A
@@ -39,6 +46,11 @@ func (serTCA *SerialTCA) SelectPort(PortNumber uint8) error {
 
 	serTCA.sio.WriteStringLine(serTCA.logger, "deej.modules.TCA9548A.select")
 	serTCA.sio.WriteStringLine(serTCA.logger, strconv.Itoa(int(PortNumber)))
+
+	if serTCA.cmddelay > (time.Microsecond * 1) {
+		// serTCA.logger.Infof("Sleeping for cmd: %s milliseconds", serTCA.cmddelay)
+		time.Sleep(serTCA.cmddelay)
+	}
 
 	if resumeAfter {
 		serTCA.sio.Start()

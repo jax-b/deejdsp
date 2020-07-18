@@ -14,8 +14,9 @@ import (
 
 // SerialSD strut for serial objects
 type SerialSD struct {
-	sio    *deej.SerialIO
-	logger *zap.SugaredLogger
+	sio      *deej.SerialIO
+	logger   *zap.SugaredLogger
+	cmddelay time.Duration
 }
 
 // NewSerialSD Creates a new sd object
@@ -26,6 +27,11 @@ func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialSD, erro
 		logger: sdlogger,
 	}
 	return serSD, nil
+}
+
+// SetTimeDelay sets the time to delay after a command has been executed
+func (serSD *SerialSD) SetTimeDelay(delay time.Duration) {
+	serSD.cmddelay = delay
 }
 
 // ListDir lists the dir to logger and returns it as a string
@@ -59,9 +65,14 @@ Loop:
 
 	lineChannel = nil
 
+	if serSD.cmddelay > (time.Microsecond * 1) {
+		time.Sleep(serSD.cmddelay)
+	}
+
 	if resumeAfter {
 		serSD.sio.Start()
 	}
+
 	return returnText, nil
 }
 
@@ -79,24 +90,9 @@ func (serSD *SerialSD) Delete(filename string) error {
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.delete")
 	serSD.sio.WriteStringLine(serSD.logger, filename)
 
-	//clear status messages
-	lineChannel := serSD.sio.ReadLine(serSD.logger)
-
-Loop:
-	for {
-		select {
-		case <-time.After(250 * time.Millisecond):
-			break Loop
-		case <-lineChannel:
-			if SerialData == "DONE" {
-				break Loop
-			} else {
-				returnText = returnText + SerialData
-			}
-		}
+	if serSD.cmddelay > (time.Microsecond * 1) {
+		time.Sleep(serSD.cmddelay)
 	}
-
-	lineChannel = nil
 
 	if resumeAfter {
 		serSD.sio.Start()
@@ -169,6 +165,10 @@ Loop:
 
 	if err = f.Close(); err != nil {
 		return err
+	}
+
+	if serSD.cmddelay > (time.Microsecond * 1) {
+		time.Sleep(serSD.cmddelay)
 	}
 
 	if resumeAfter {

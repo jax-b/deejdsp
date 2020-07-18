@@ -29,7 +29,7 @@ func main() {
 		"buildType", buildType)
 
 	// create the deej instance
-	d, err := deej.NewDeej(logger)
+	d, err := deej.NewDeej(logger, true)
 	if err != nil {
 		named.Fatalw("Failed to create deej object", "error", err)
 	}
@@ -53,14 +53,27 @@ func main() {
 	modlogger := d.NewNammedLogger("module")
 	serial := d.GetSerial()
 
+	// Load Config
+	cfgDSP, err := deejdsp.NewDSPConfig(modlogger)
+	cfgDSP.Load()
+
+	if cfgDSP.StartupDelay > 0 {
+		modlogger.Infof("Sleeping for controller startup: %s milliseconds", cfgDSP.StartupDelay)
+		time.Sleep(time.Duration(cfgDSP.StartupDelay) * time.Millisecond)
+	}
+
 	//Set up all modules
 	// serSD, err := deejdsp.NewSerialSD(serial, modlogger)
 	serTSC, err := deejdsp.NewSerialTCA(serial, modlogger)
 	serDSP, err := deejdsp.NewSerialDSP(serial, modlogger)
-	cfgDSP, err := deejdsp.NewDSPConfig(modlogger)
+	if cfgDSP.CommandDelay > 0 {
+		time := time.Duration(cfgDSP.CommandDelay) * time.Millisecond
+		// serSD.SetTimeDelay(time)
+		serTSC.SetTimeDelay(time)
+		serDSP.SetTimeDelay(time)
+	}
 
-	cfgDSP.Load()
-
+	//Initalise the Displays
 	for i := 0; i <= cfgDSP.DisplayMapping.Length(); i++ {
 		value, _ := cfgDSP.DisplayMapping.Get(i)
 

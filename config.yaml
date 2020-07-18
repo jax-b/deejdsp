@@ -10,7 +10,7 @@ slider_mapping:
     - HuluLLC.HuluPlus_2.5.5.0_neutral__fphbd361v8ty # Hulu
     - 4DF9E0F8.Netflix_6.96.725.0_x64__mcm4njqhnhss8 # Netflix
   2: # Music
-    - spotify.exe                       # Spotify
+    - Spotify.exe                       # Spotify
     - Microsoft.ZuneMusic_10.20032.12611.0_x64__8wekyb3d8bbwe # Builtin Media Player
   3: 
     - discord.exe                       # Discord
@@ -33,20 +33,25 @@ slider_mapping:
   5:
 
 display_mapping:
-  0: master.b
+  0: speaker.b
   1: firefox.b
   2: spotify.b
   3: discord.b
-  4: game.b
-  5:
+  4: controler.b
+  5: thechild.b
 
 # set this to true if you want the controls inverted (i.e. top is 0%, bottom is 100%)
 invert_sliders: false
 
 # settings for connecting to the arduino board
-com_port: COM6
+com_port: COM16
 baud_rate: 115200
+
+# Time Delay (usedfull for slower microcontrollers)
+# Time in miliseconds
+startup_delay: 0
+command_delay: 0
 
 # limits how often deej will look for new processes
 # it's recommended to leave this setting at its default value
-process_refresh_frequency: 5
+process_refresh_frequency: 50
