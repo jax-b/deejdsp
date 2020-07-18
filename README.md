@@ -1,6 +1,6 @@
 # deejdsp
 ## This is a deej project that uses custom written plugins to support displays!
-This uses my modifed fork of deej. This is still in the development phase but expect to see a more finished version soon!
+This uses my modifed fork of deej. This is still in the development phase but expect to see a more finished version soon (never mind on the soon part)! Its Highly recomended that you use a microcontroller base around the Atmega32u4 (like a arduino leonardo or micro)  
 ## TODO
 1. Add Taskbar send File
 2. Get a image from a session
