@@ -306,6 +306,7 @@ void sdPrintDirectory(File dir, int numTabs) {
       Serial.println(entry.size(), DEC);
     }
     entry.close();
+    delay(2);
   }
 }
 
