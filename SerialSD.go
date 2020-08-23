@@ -29,13 +29,27 @@ func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialSD, erro
 	return serSD, nil
 }
 
+// CheckForFile Checks if a file exsists on the SD card
+func (serSD *SerialSD) CheckForFile(filename string) (bool, error) {
+	filelist, err := serSD.ListDir()
+	if err != nil {
+		return false, err
+	}
+	for _, value := range filelist {
+		if strings.EqualFold(value, filename) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // SetTimeDelay sets the time to delay after a command has been executed
 func (serSD *SerialSD) SetTimeDelay(delay time.Duration) {
 	serSD.cmddelay = delay
 }
 
 // ListDir lists the dir to logger and returns it as a string
-func (serSD *SerialSD) ListDir() (string, error) {
+func (serSD *SerialSD) ListDir() ([]string, error) {
 	resumeAfter := serSD.sio.IsRunning()
 
 	if serSD.sio.IsRunning() {
@@ -45,9 +59,9 @@ func (serSD *SerialSD) ListDir() (string, error) {
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
 
 	lineChannel := serSD.sio.ReadLine(serSD.logger)
-
+	var returnText []string
 	SerialData := <-lineChannel
-	returnText := SerialData
+	returnText = append(returnText, SerialData)
 
 Loop:
 	for {
@@ -58,7 +72,7 @@ Loop:
 			if SerialData == "DONE" {
 				break Loop
 			} else {
-				returnText = returnText + SerialData
+				returnText = append(returnText, SerialData)
 			}
 		}
 	}
