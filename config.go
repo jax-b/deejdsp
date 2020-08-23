@@ -17,12 +17,14 @@ type DSPCanonicalConfig struct {
 	StartupDelay   int
 	logger         *zap.SugaredLogger
 	CommandDelay   int
+	BWThreshold    int
 }
 
 type marshalledConfig struct {
 	DisplayMapping map[int]interface{} `yaml:"display_mapping"`
 	StartupDelay   int                 `yaml:"startup_delay"`
 	CommandDelay   int                 `yaml:"command_delay"`
+	BWThreshold    int                 `yaml:"BlackWhite_Threshold"`
 }
 
 var defaultDisplayMapping = func() *displayMap {
@@ -167,6 +169,15 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 		cc.CommandDelay = 0
 	} else {
 		cc.CommandDelay = mc.CommandDelay
+	}
+
+	if mc.BWThreshold <= 0 {
+		cc.logger.Warnw("Missing key in config, using default value",
+			"key", "command_delay",
+			"value", mc.BWThreshold)
+		cc.BWThreshold = 200
+	} else {
+		cc.BWThreshold = mc.BWThreshold
 	}
 
 	return nil
