@@ -13,7 +13,7 @@ import (
 
 // DSPCanonicalConfig config of DSP
 type DSPCanonicalConfig struct {
-	DisplayMapping *displayMap
+	DisplayMapping map[int]string
 	StartupDelay   int
 	logger         *zap.SugaredLogger
 	CommandDelay   int
@@ -26,12 +26,6 @@ type marshalledConfig struct {
 	CommandDelay   int                 `yaml:"command_delay"`
 	BWThreshold    int                 `yaml:"BlackWhite_Threshold"`
 }
-
-var defaultDisplayMapping = func() *displayMap {
-	emptyMap := newDisplayMap()
-	emptyMap.set(0, []string{""})
-	return emptyMap
-}()
 
 const configFilepath = "config.yaml"
 
@@ -90,56 +84,25 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 	if mc.DisplayMapping == nil {
 		cc.logger.Warnw("Missing key in config, using default value",
 			"key", "display_mapping",
-			"value", defaultDisplayMapping)
+			"value", map[int]string{0: ""})
 
-		cc.DisplayMapping = defaultDisplayMapping
+		cc.DisplayMapping = map[int]string{0: ""}
 	} else {
-
-		displayMapping := newDisplayMap()
-
+		cc.DisplayMapping = make(map[int]string)
 		// this is where we need to parse out each value (which is an interface{} at this point),
 		// and type-assert it into either a string or a list of strings
 		for key, value := range mc.DisplayMapping {
 			switch typedValue := value.(type) {
 			case string:
 				if typedValue == "" {
-					displayMapping.set(key, []string{})
+
 				} else {
-					displayMapping.set(key, []string{typedValue})
+					cc.DisplayMapping[key] = typedValue
 				}
 
 			// silently ignore nil values and treat as no targets
 			case nil:
-				displayMapping.set(key, []string{})
-
-			// we can't directly type-assert to a []string, so we must check each item. yup, that sucks
-			case []interface{}:
-				displayItems := []string{}
-
-				for _, listItem := range typedValue {
-
-					// silently ignore nil values
-					if listItem == nil {
-						continue
-					}
-
-					listItemStr, ok := listItem.(string)
-					if !ok {
-						cc.logger.Warnw("Non-string value in slider mapping list",
-							"key", key,
-							"value", listItem,
-							"valueType", fmt.Sprintf("%t", listItem))
-
-						return fmt.Errorf("invalid slider mapping for slider %d: got type %t, need string or []string", key, typedValue)
-					}
-
-					// ignore empty strings
-					if listItemStr != "" {
-						displayItems = append(displayItems, listItemStr)
-					}
-				}
-
-				displayMapping.set(key, displayItems)
+				cc.DisplayMapping[key] = ""
 			default:
 				cc.logger.Warnw("Invalid value for slider mapping key",
 					"key", key,
@@ -149,8 +112,6 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 				return fmt.Errorf("invalid slider mapping for slider %d: got type %t, need string or []string", key, typedValue)
 			}
 		}
-
-		cc.DisplayMapping = displayMapping
 	}
 
 	if mc.StartupDelay <= 0 {
@@ -173,7 +134,7 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 
 	if mc.BWThreshold <= 0 {
 		cc.logger.Warnw("Missing key in config, using default value",
-			"key", "command_delay",
+			"key", "BlackWhite_Threshold",
 			"value", mc.BWThreshold)
 		cc.BWThreshold = 200
 	} else {
