@@ -2,6 +2,7 @@ package deejdsp
 
 import (
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -19,8 +20,11 @@ const (
 )
 
 // GetAndConvertIMG returns a byteslice with the converted image
-func GetAndConvertIMG(filepath string, index int32, threshold int) [][]byte {
+func GetAndConvertIMG(filepath string, index int32, threshold int) ([][]byte, error) {
 	extractedimage, _ := iconextract.ExtractIcon(filepath, index)
+	if extractedimage == nil {
+		return nil, errors.New("No Image Extracted")
+	}
 	resizedImage := resize.Thumbnail(uint(displaySizeX), uint(displaySizeY), extractedimage, resize.NearestNeighbor)
 
 	amountToCenter := (displaySizeX - resizedImage.Bounds().Max.X) / 2
@@ -42,7 +46,7 @@ func GetAndConvertIMG(filepath string, index int32, threshold int) [][]byte {
 	bwimage := ssd1306FilePrep.ConvertBW(constructedImage, uint8(threshold))
 
 	bytedIMG := ssd1306FilePrep.ToBWByteSlice(bwimage, uint8(threshold))
-	return bytedIMG
+	return bytedIMG, nil
 }
 
 // CreateFileName creates a truncated 8 character filename using sha1 and the .b ending
