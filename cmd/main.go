@@ -2,16 +2,25 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jax-b/deej"
 	"github.com/jax-b/deejdsp"
+	"go.uber.org/zap"
 )
 
 var (
 	gitCommit  string
 	versionTag string
 	buildType  string
+	d          *deej.Deej
+	cfgDSP     *deejdsp.DSPCanonicalConfig
+	serSD      *deejdsp.SerialSD
+	serTCA     *deejdsp.SerialTCA
+	serDSP     *deejdsp.SerialDSP
+	sessionMap *deej.SessionMap
+	sliderMap  *deej.SliderMap
 )
 
 func main() {
@@ -45,16 +54,14 @@ func main() {
 		d.SetVersion(versionString)
 	}
 
-	// onwards, to glory
 	if err = d.Initialize(); err != nil {
 		named.Fatalw("Failed to initialize deej", "error", err)
 	}
 
 	modlogger := d.NewNammedLogger("module")
 	serial := d.GetSerial()
-
 	// Load Config
-	cfgDSP, err := deejdsp.NewDSPConfig(modlogger)
+	cfgDSP, err = deejdsp.NewDSPConfig(modlogger)
 	cfgDSP.Load()
 
 	if cfgDSP.StartupDelay > 0 {
@@ -63,30 +70,24 @@ func main() {
 	}
 
 	//Set up all modules
-	// serSD, err := deejdsp.NewSerialSD(serial, modlogger)
-	serTSC, err := deejdsp.NewSerialTCA(serial, modlogger)
-	serDSP, err := deejdsp.NewSerialDSP(serial, modlogger)
+	serSD, err = deejdsp.NewSerialSD(serial, modlogger)
+	serTCA, err = deejdsp.NewSerialTCA(serial, modlogger)
+	serDSP, err = deejdsp.NewSerialDSP(serial, modlogger)
+
+	_ = serSD
+
+	sessionMap = d.GetSessionMap()
+	sliderMap = d.GetSliderMap()
+
 	if cfgDSP.CommandDelay > 0 {
 		time := time.Duration(cfgDSP.CommandDelay) * time.Millisecond
 		// serSD.SetTimeDelay(time)
-		serTSC.SetTimeDelay(time)
+		serTCA.SetTimeDelay(time)
 		serDSP.SetTimeDelay(time)
 	}
 
 	//Initalise the Displays
-	for i := 0; i <= cfgDSP.DisplayMapping.Length(); i++ {
-		value, _ := cfgDSP.DisplayMapping.Get(i)
-
-		serTSC.SelectPort(uint8(i))
-
-		if len(value) > 0 {
-			serDSP.SetImage(string(value[0]))
-			serDSP.DisplayOn()
-			modlogger.Named("Display").Infof("%d: %q", i, string(value[0]))
-		} else {
-			serDSP.DisplayOff()
-		}
-	}
+	loadDSPMapings(modlogger)
 
 	// Detect Config Reload
 	go func() {
@@ -97,32 +98,100 @@ func main() {
 		for {
 			select {
 			case <-configReloadedChannel:
+				modlogger.Named("Display").Debug("Config Reload Detected")
 				serial.Pause()
 
 				cfgDSP.Load()
 
+				loadDSPMapings(modlogger)
 				// let the connection close
 				<-time.After(stopDelay)
-
-				for i := 0; i <= cfgDSP.DisplayMapping.Length(); i++ {
-					value, _ := cfgDSP.DisplayMapping.Get(i)
-
-					serTSC.SelectPort(uint8(i))
-
-					if len(value) > 0 {
-						serDSP.DisplayOn()
-						serDSP.SetImage(string(value[0]))
-						modlogger.Named("Display").Infof("%d: %q", i, string(value[0]))
-					} else {
-						serDSP.DisplayOff()
-					}
-				}
+				//Initalise the Displays
 
 				serial.Start()
 			}
 		}
 	}()
 
+	// go func() {
+	// 	sessionReloadedChannel := d.SubscribeToSessionReload()
+
+	// 	for {
+	// 		select {
+	// 		case <-sessionReloadedChannel:
+	// 			serial.Pause()
+	// 			modlogger.Named("Display").Debug("Session Reload Detected")
+	// 			loadDSPMapings(modlogger)
+	// 			serial.Start()
+	// 		}
+	// 	}
+	// }()
+
 	d.Start()
 
+}
+
+func loadDSPMapings(modlogger *zap.SugaredLogger) {
+	modlogger = modlogger.Named("Display")
+
+	modlogger.Info("Setting Displays")
+
+	// Create an automap for the sessions
+	AutoMap := deejdsp.CreateAutoMap(sliderMap, sessionMap)
+	modlogger.Infof("AutoMaped Sessions: %v", AutoMap)
+	//for each screen go and check the config and finaly set the image
+	for key, value := range cfgDSP.DisplayMapping {
+		serTCA.SelectPort(uint8(key))
+		if value != "auto" { // Set to name in the customised image
+			fileExsists, _ := serSD.CheckForFile(value)
+			if fileExsists {
+				serDSP.SetImage(string(value[0]))
+				serDSP.DisplayOn()
+				modlogger.Infof("%d: %q", key, value)
+			} else {
+				modlogger.Infof("%d: imagefile with name %q does not exsist on remote", key, value)
+			}
+		} else if len(value) <= 0 { // Turn the display off if nothing is set
+			serDSP.DisplayOff()
+		} else if value == "auto" { // if its set to auto: Generate a image if it does not exsist and send it to the SD card
+			//get the audio session from deej using the AutoMap
+			if autoMappedImage, ok := AutoMap[key]; ok {
+				SessionAtSlider, _ := sessionMap.Get(autoMappedImage)
+				if SessionAtSlider != nil {
+					// get the icon path
+					iconPathFull := SessionAtSlider[0].GetIconPath()
+					modlogger.Infof("file path of slider %d: %s", key, iconPathFull)
+					icoPathElements := strings.Split(iconPathFull, "\\")
+					icoFileName := icoPathElements[len(icoPathElements)-1]
+					sdname := deejdsp.CreateFileName(icoFileName)
+					// if the program has a iconpath cont
+					if len(iconPathFull) > 0 {
+
+						// Check if the file exsits on the card
+						pregenerated, _ := serSD.CheckForFile(sdname)
+
+						// Testing to always generate an image
+						// pregenerated = false
+
+						// generate a new image if it doesnt exsist
+						if !pregenerated {
+							slicedIMG := deejdsp.GetAndConvertIMG(iconPathFull, 0, cfgDSP.BWThreshold)
+							var byteslice []byte
+							for _, value := range slicedIMG {
+								for _, value2 := range value {
+									byteslice = append(byteslice, value2)
+								}
+							}
+							serSD.SendByteSlice(byteslice, sdname)
+						}
+						serDSP.SetImage(sdname)
+						serDSP.DisplayOn()
+						modlogger.Infof("%d: program %q localfile %q", key, icoFileName, sdname)
+					} else {
+						modlogger.Infof("No Session Mapped for Slider %d", key)
+					}
+				}
+			}
+		}
+	}
 }

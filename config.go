@@ -73,7 +73,7 @@ func (cc *DSPCanonicalConfig) Load() error {
 
 	cc.logger.Info("Loaded config successfully")
 	cc.logger.Infow("Config values",
-		"displayMapping", cc.DisplayMapping, "startupDelay", cc.StartupDelay)
+		"DisplayMapping", cc.DisplayMapping, "StartupDelay", cc.StartupDelay, "CommandDelay", cc.CommandDelay, "BWThreshold", cc.BWThreshold)
 
 	return nil
 }
