@@ -18,7 +18,7 @@ type SerialDSP struct {
 
 // NewSerialDSP Creates a new DSP object
 func NewSerialDSP(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialDSP, error) {
-	sdlogger := logger.Named("display")
+	sdlogger := logger.Named("Display")
 	serDSP := &SerialDSP{
 		sio:    sio,
 		logger: sdlogger,
@@ -80,12 +80,16 @@ func (serDSP *SerialDSP) SetImage(filename string) error {
 	if serDSP.sio.IsRunning() {
 		serDSP.sio.Pause()
 	}
-
+	lineChannel := serDSP.sio.ReadLine(serDSP.logger)
+	select {
+	case <-time.After(350 * time.Millisecond):
+		break
+	case <-lineChannel:
+		break
+	}
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.setimage")
 	time.Sleep(5 * time.Millisecond)
 	serDSP.sio.WriteStringLine(serDSP.logger, filename)
-
-	lineChannel := serDSP.sio.ReadLine(serDSP.logger)
 
 Loop:
 	for {
