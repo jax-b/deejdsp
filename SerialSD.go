@@ -31,11 +31,13 @@ func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialSD, erro
 
 // CheckForFile Checks if a file exsists on the SD card
 func (serSD *SerialSD) CheckForFile(filename string) (bool, error) {
+	filename = strings.ToLower(filename)
 	filelist, err := serSD.ListDir()
 	if err != nil {
 		return false, err
 	}
 	for _, value := range filelist {
+		value = strings.ToLower(value)
 		if strings.EqualFold(value, filename) {
 			return true, nil
 		}
@@ -65,6 +67,8 @@ Loop:
 		case <-time.After(1 * time.Second):
 			break Loop
 		case SerialData = <-lineChannel:
+			SerialData = strings.Replace(SerialData, "\n", "", -1)
+			SerialData = strings.Replace(SerialData, "\r", "", -1)
 			if SerialData == "DONE" {
 				break Loop
 			} else {

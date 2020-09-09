@@ -44,7 +44,7 @@ display_mapping:
   2: auto
   3: auto
   4: auto
-  5: auto
+  5: thechild.b
 
 # set this to true if you want the controls inverted (i.e. top is 0%, bottom is 100%)
 invert_sliders: false

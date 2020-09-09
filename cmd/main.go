@@ -1,12 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/jax-b/deej"
 	"github.com/jax-b/deejdsp"
+	"github.com/sqweek/dialog"
 	"go.uber.org/zap"
 )
 
@@ -14,6 +16,9 @@ var (
 	gitCommit  string
 	versionTag string
 	buildType  string
+
+	verbose bool
+
 	d          *deej.Deej
 	cfgDSP     *deejdsp.DSPCanonicalConfig
 	serSD      *deejdsp.SerialSD
@@ -22,6 +27,12 @@ var (
 	sessionMap *deej.SessionMap
 	sliderMap  *deej.SliderMap
 )
+
+func init() {
+	flag.BoolVar(&verbose, "verbose", false, "show verbose logs (useful for debugging serial)")
+	flag.BoolVar(&verbose, "v", false, "shorthand for --verbose")
+	flag.Parse()
+}
 
 func main() {
 	logger, err := deej.NewLogger(buildType)
@@ -37,8 +48,13 @@ func main() {
 		"versionTag", versionTag,
 		"buildType", buildType)
 
+	// provide a fair warning if the user's running in verbose mode
+	if verbose {
+		named.Debug("Verbose flag provided, all log messages will be shown")
+	}
+
 	// create the deej instance
-	d, err := deej.NewDeej(logger, true)
+	d, err := deej.NewDeej(logger, verbose)
 	if err != nil {
 		named.Fatalw("Failed to create deej object", "error", err)
 	}
@@ -74,6 +90,65 @@ func main() {
 	serTCA, err = deejdsp.NewSerialTCA(serial, modlogger)
 	serDSP, err = deejdsp.NewSerialDSP(serial, modlogger)
 
+	// Tray Menu item: Send Image
+	go func() {
+		menuItem := <-d.AddMenuItem("Send Image", "Send A image file to the internal SD card")
+
+		time.Sleep(10 * time.Millisecond)
+
+		for {
+			<-menuItem.ClickedCh
+			filename, err := dialog.File().Filter("ByteImage", "b").Title("SendImage").Load()
+			if err != nil {
+				break
+			}
+			PathElements := strings.Split(filename, "\\")
+			sdFilename := PathElements[len(PathElements)-1]
+			serSD.SendFile(filename, sdFilename)
+		}
+	}()
+
+	// Tray Menu item: List Files
+	go func() {
+		menuItem := <-d.AddMenuItem("List Files", "List the files on the sd card")
+
+		time.Sleep(10 * time.Millisecond)
+
+		for {
+			<-menuItem.ClickedCh
+			files, _ := serSD.ListDir()
+			var filesSingle string
+			for _, path := range files {
+				filesSingle = filesSingle + path + "\n"
+			}
+			dialog.Message("%s", filesSingle).Title("SD Files").Info()
+		}
+	}()
+
+	// Tray Menu Item : Turn off displays
+	go func() {
+		menuItem := <-d.AddMenuItem("Displays Off", "If the config reloads it will turn off all the displays")
+
+		time.Sleep(10 * time.Millisecond)
+
+		for {
+			<-menuItem.ClickedCh
+			resumeAfter := serial.IsRunning()
+
+			if serial.IsRunning() {
+				serial.Pause()
+			}
+
+			for i := range cfgDSP.DisplayMapping {
+				serTCA.SelectPort(uint8(i))
+				serDSP.DisplayOff()
+			}
+
+			if resumeAfter {
+				serial.Start()
+			}
+		}
+	}()
 	_ = serSD
 
 	sessionMap = d.GetSessionMap()
@@ -88,7 +163,8 @@ func main() {
 
 	//Initalise the Displays
 	loadDSPMapings(modlogger)
-	serial.Flush()
+	modlogger.Named("Serial").Debug("Flushing")
+	serial.Flush(modlogger)
 
 	// Detect Config Reload
 	go func() {
@@ -105,7 +181,8 @@ func main() {
 				cfgDSP.Load()
 
 				loadDSPMapings(modlogger)
-				serial.Flush()
+				modlogger.Named("Serial").Debug("Flushing")
+				serial.Flush(modlogger)
 				// let the connection close
 				<-time.After(stopDelay)
 				//Initalise the Displays
@@ -147,7 +224,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 		if value != "auto" { // Set to name in the customised image
 			fileExsists, _ := serSD.CheckForFile(value)
 			if fileExsists {
-				serDSP.SetImage(string(value[0]))
+				serDSP.SetImage(string(value))
 				serDSP.DisplayOn()
 				modlogger.Debugf("%d: %q", key, value)
 			} else {
@@ -162,7 +239,6 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				if SessionAtSlider != nil {
 					// get the icon path
 					iconPathFull := SessionAtSlider[0].GetIconPath()
-					modlogger.Infof("file path of slider %d: %s", key, iconPathFull)
 					icoPathElements := strings.Split(iconPathFull, "\\")
 					icoFileName := icoPathElements[len(icoPathElements)-1]
 					sdname := deejdsp.CreateFileName(icoFileName)
@@ -192,9 +268,10 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 						}
 						serDSP.SetImage(sdname)
 						serDSP.DisplayOn()
-						modlogger.Infof("%d: program %q localfile %q", key, icoFileName, sdname)
+						modlogger.Debugf("file path of slider %d: %s", key, iconPathFull)
+						modlogger.Debugf("%d: program %q localfile %q", key, icoFileName, sdname)
 					} else {
-						modlogger.Infof("No Session Mapped for Slider %d", key)
+						modlogger.Debugf("No Session Mapped for Slider %d", key)
 					}
 				}
 			}

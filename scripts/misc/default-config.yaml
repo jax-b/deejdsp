@@ -15,7 +15,35 @@ invert_sliders: false
 
 # settings for connecting to the arduino board
 com_port: COM4
-baud_rate: 9600
+baud_rate: 115200
+
+# Only one image can be set per display mapping 
+# Keep it to 8 characters not including the extention to fit in the arduino SD library
+# You can specify a custom name, auto or nothing
+# auto: automatically generate a image from current mapped session to slider
+# Custom Name: sends that name directly to the screen
+# Nothing: turns off the display
+display_mapping:
+  0: speaker.b
+  1: auto
+  2: auto
+  3: auto
+  4: auto
+  5: auto
+
+# set this to true if you want the controls inverted (i.e. top is 0%, bottom is 100%)
+invert_sliders: false
+
+# settings for connecting to the arduino board
+com_port: COM4
+baud_rate: 115200
+
+# Time Delay (usedfull for slower microcontrollers)
+# Time in miliseconds
+startup_delay: 10
+command_delay: 10
+
+BlackWhite_Threshold: 125
 
 # limits how often deej will look for new processes
 # it's recommended to leave this setting at its default value
