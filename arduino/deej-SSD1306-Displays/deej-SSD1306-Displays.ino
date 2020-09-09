@@ -239,6 +239,10 @@ void checkForCommand() {
           Serial.println("TIMEOUT");
         }
         else {
+          if (SD.exists(filename)){
+            sdDelete(filename);
+            Serial.println("OVERWRITE");
+          }
           sdPutFile(filename);
         }
         // Any Time intensive calls should be monitored by deej
@@ -321,7 +325,7 @@ void sdPutFile(const String filename) {
           if (success == -1 || success == 0) {
             Serial.println("error");
           }
-          Serial.println(last3[0]);
+//          Serial.println(last3[0]);
         }
         last3[0] = last3[1];
         last3[1] = last3[2];
