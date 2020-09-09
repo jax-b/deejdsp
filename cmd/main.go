@@ -65,7 +65,7 @@ func main() {
 	cfgDSP.Load()
 
 	if cfgDSP.StartupDelay > 0 {
-		modlogger.Infof("Sleeping for controller startup: %s milliseconds", cfgDSP.StartupDelay)
+		modlogger.Debugf("Sleeping for controller startup: %s milliseconds", cfgDSP.StartupDelay)
 		time.Sleep(time.Duration(cfgDSP.StartupDelay) * time.Millisecond)
 	}
 
@@ -88,6 +88,7 @@ func main() {
 
 	//Initalise the Displays
 	loadDSPMapings(modlogger)
+	serial.Flush()
 
 	// Detect Config Reload
 	go func() {
@@ -104,6 +105,7 @@ func main() {
 				cfgDSP.Load()
 
 				loadDSPMapings(modlogger)
+				serial.Flush()
 				// let the connection close
 				<-time.After(stopDelay)
 				//Initalise the Displays
@@ -138,7 +140,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 
 	// Create an automap for the sessions
 	AutoMap := deejdsp.CreateAutoMap(sliderMap, sessionMap)
-	modlogger.Infof("AutoMaped Sessions: %v", AutoMap)
+	modlogger.Debugf("AutoMaped Sessions: %v", AutoMap)
 	//for each screen go and check the config and finaly set the image
 	for key, value := range cfgDSP.DisplayMapping {
 		serTCA.SelectPort(uint8(key))
@@ -147,9 +149,9 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 			if fileExsists {
 				serDSP.SetImage(string(value[0]))
 				serDSP.DisplayOn()
-				modlogger.Infof("%d: %q", key, value)
+				modlogger.Debugf("%d: %q", key, value)
 			} else {
-				modlogger.Infof("%d: imagefile with name %q does not exsist on remote", key, value)
+				modlogger.Debugf("%d: imagefile with name %q does not exsist on remote", key, value)
 			}
 		} else if len(value) <= 0 { // Turn the display off if nothing is set
 			serDSP.DisplayOff()
@@ -175,7 +177,11 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 
 						// generate a new image if it doesnt exsist
 						if !pregenerated {
-							slicedIMG := deejdsp.GetAndConvertIMG(iconPathFull, 0, cfgDSP.BWThreshold)
+							slicedIMG, err := deejdsp.GetAndConvertIMG(iconPathFull, 0, cfgDSP.BWThreshold)
+							if err != nil {
+								modlogger.Errorf("No Image found at the filepath")
+								break
+							}
 							var byteslice []byte
 							for _, value := range slicedIMG {
 								for _, value2 := range value {
