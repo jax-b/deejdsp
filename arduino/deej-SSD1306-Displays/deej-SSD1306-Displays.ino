@@ -297,15 +297,18 @@ void sdPrintDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       Serial.print('\t');
     }
-    Serial.print(entry.name());
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      sdPrintDirectory(entry, numTabs + 1);
-    } else {
-      Serial.println();
+    String entryname = entry.name();
+    if ( !entryname.equals("SYSTEM~1")) {
+      Serial.print(entryname);
+      if (entry.isDirectory()) {
+        Serial.println("/");
+        sdPrintDirectory(entry, numTabs + 1);
+      } else {
+        Serial.println();
+      }
+      entry.close();
+      delay(2);
     }
-    entry.close();
-    delay(2);
   }
 }
 
