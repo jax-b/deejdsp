@@ -30,7 +30,9 @@ slider_mapping:
     - ReCore.exe                        # ReCore
     - CrashBandicootNSaneTrilogy.exe 	  # Crash Bandicoot Trilogy
     - DeadByDaylight-Win64-Shipping.exe # Dead By Daylight
+    - Ace7Game.exe			# Ace Combat 7
   5:
+    - chrome.exe
 
 # Only one image can be set per display mapping 
 # Keep it to 8 characters not including the extention to fit in the arduino SD library
@@ -44,7 +46,7 @@ display_mapping:
   2: auto
   3: auto
   4: auto
-  5: thechild.b
+  5: auto
 
 # set this to true if you want the controls inverted (i.e. top is 0%, bottom is 100%)
 invert_sliders: false
@@ -58,8 +60,10 @@ baud_rate: 115200
 startup_delay: 10
 command_delay: 10
 
-BlackWhite_Threshold: 125
+BlackWhite_Threshold: 175
 
 # limits how often deej will look for new processes
 # it's recommended to leave this setting at its default value
 process_refresh_frequency: 50
+
+IconFinderDotComAPIKey: example

@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/jax-b/deej v0.9.10
 	github.com/jax-b/iconextract v0.1.1
+	github.com/jax-b/iconfinderapi v0.0.0-20201004015827-6583a8d92109
 	github.com/jax-b/ssd1306FilePrep v0.1.1
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/sqweek/dialog v0.0.0-20200601143742-43ea34326190
@@ -14,3 +15,4 @@ require (
 )
 
 replace github.com/jax-b/deej v0.9.10 => ../deej
+replace github.com/jax-b/iconfinderapi v0.0.0-20201004015827-6583a8d92109 => ../iconfinderapi

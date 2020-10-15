@@ -13,18 +13,20 @@ import (
 
 // DSPCanonicalConfig config of DSP
 type DSPCanonicalConfig struct {
-	DisplayMapping map[int]string
-	StartupDelay   int
-	logger         *zap.SugaredLogger
-	CommandDelay   int
-	BWThreshold    int
+	DisplayMapping         map[int]string
+	StartupDelay           int
+	logger                 *zap.SugaredLogger
+	CommandDelay           int
+	BWThreshold            int
+	IconFinderDotComAPIKey string
 }
 
 type marshalledConfig struct {
-	DisplayMapping map[int]interface{} `yaml:"display_mapping"`
-	StartupDelay   int                 `yaml:"startup_delay"`
-	CommandDelay   int                 `yaml:"command_delay"`
-	BWThreshold    int                 `yaml:"BlackWhite_Threshold"`
+	DisplayMapping         map[int]interface{} `yaml:"display_mapping"`
+	StartupDelay           int                 `yaml:"startup_delay"`
+	CommandDelay           int                 `yaml:"command_delay"`
+	BWThreshold            int                 `yaml:"BlackWhite_Threshold"`
+	IconFinderDotComAPIKey string              `yaml:"IconFinderDotComAPIKey"`
 }
 
 const configFilepath = "config.yaml"
@@ -139,6 +141,14 @@ func (cc *DSPCanonicalConfig) populateFromMarshalled(mc *marshalledConfig) error
 		cc.BWThreshold = 200
 	} else {
 		cc.BWThreshold = mc.BWThreshold
+	}
+
+	if mc.IconFinderDotComAPIKey == "" {
+		cc.logger.Warnw("Missing key in config, cannot grab icons",
+			"key", "iconFinderDotComAPIKey")
+		cc.IconFinderDotComAPIKey = ""
+	} else {
+		cc.IconFinderDotComAPIKey = mc.IconFinderDotComAPIKey
 	}
 
 	return nil
