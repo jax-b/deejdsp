@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/jax-b/deej"
-	"github.com/jax-b/iconextract"
+	"github.com/jax-b/iconfinderapi"
 	"github.com/jax-b/ssd1306FilePrep"
 	"github.com/nfnt/resize"
 )
@@ -19,13 +19,39 @@ const (
 	displaySizeY = 64
 )
 
-// GetAndConvertIMG returns a byteslice with the converted image
-func GetAndConvertIMG(filepath string, index int32, threshold int) ([][]byte, error) {
-	extractedimage, _ := iconextract.ExtractIcon(filepath, index)
-	if extractedimage == nil {
-		return nil, errors.New("No Image Extracted")
+// GetIconFromAPI gets an icon from online
+// This calls the API from icon finder and tryes to get the first icon that matches the requirements
+// It only looks up 3 icons
+// It filters on flat icons, it cannot be a icon that needs to be bought
+// It cannot be a vector image
+func GetIconFromAPI(icofdr *iconfinderapi.Iconfinder, keyword string) (image.Image, error) {
+	search, err := icofdr.SearchIcons(keyword, 3, -1, 0, 0, "", "", "flat")
+	if err != nil {
+		return nil, err
 	}
-	resizedImage := resize.Thumbnail(uint(displaySizeX), uint(displaySizeY), extractedimage, resize.NearestNeighbor)
+	for _, results := range search.Icons {
+		for _, size := range results.Rasters {
+			// Looks for the first icon that is equal to or bigger than the display size
+			// We resize it anyways so we are just looking for an icon with the most detail
+			if size.SizeHeight >= displaySizeY {
+				for _, format := range size.Formats {
+					if format.Format == "png" {
+						return icofdr.DownloadIcon(format), nil
+					}
+				}
+				// if we cannot find a png (preferential) then we download the jpg
+				return icofdr.DownloadIcon(size.Formats[0]), nil
+			}
+		}
+	}
+
+	return nil, errors.New("Unable to find a Compatable image")
+}
+
+// ConvertImage returns a byteslice with the converted image
+// Basicly a copy of the main test program in my ssd1306 file prep lib but we dont write it to a file
+func ConvertImage(srcimg image.Image, index int32, threshold int) ([][]byte, error) {
+	resizedImage := resize.Thumbnail(uint(displaySizeX), uint(displaySizeY), srcimg, resize.NearestNeighbor)
 
 	amountToCenter := (displaySizeX - resizedImage.Bounds().Max.X) / 2
 
@@ -69,6 +95,8 @@ func CreateAutoMap(SliderMap *deej.SliderMap, SessionMap *deej.SessionMap) map[i
 				break
 			}
 		}
+		fmt.Print("Hello")
 	})
+	fmt.Print("world")
 	return AutoMap
 }

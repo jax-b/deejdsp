@@ -8,6 +8,7 @@ import (
 
 	"github.com/jax-b/deej"
 	"github.com/jax-b/deejdsp"
+	"github.com/jax-b/iconfinderapi"
 	"github.com/sqweek/dialog"
 	"go.uber.org/zap"
 )
@@ -17,7 +18,8 @@ var (
 	versionTag string
 	buildType  string
 
-	verbose bool
+	verbose       bool
+	useIconFinder bool
 
 	d          *deej.Deej
 	cfgDSP     *deejdsp.DSPCanonicalConfig
@@ -26,6 +28,7 @@ var (
 	serDSP     *deejdsp.SerialDSP
 	sessionMap *deej.SessionMap
 	sliderMap  *deej.SliderMap
+	icofdrapi  *iconfinderapi.Iconfinder
 )
 
 func init() {
@@ -80,6 +83,15 @@ func main() {
 	cfgDSP, err = deejdsp.NewDSPConfig(modlogger)
 	cfgDSP.Load()
 
+	// Create IconFinderAPI
+	if len(cfgDSP.IconFinderDotComAPIKey) > 0 {
+		icofdrapi = iconfinderapi.NewIconFinder(cfgDSP.IconFinderDotComAPIKey)
+		useIconFinder = true
+	} else {
+		useIconFinder = false
+		d.Notifier.Notify("iconfinder.com apikey not set", "in order to use online icons please enter a icon finder api key")
+	}
+
 	if cfgDSP.StartupDelay > 0 {
 		modlogger.Debugf("Sleeping for controller startup: %s milliseconds", cfgDSP.StartupDelay)
 		time.Sleep(time.Duration(cfgDSP.StartupDelay) * time.Millisecond)
@@ -92,28 +104,25 @@ func main() {
 
 	// Tray Menu item: Send Image
 	go func() {
-		menuItem := <-d.AddMenuItem("Send Image", "Send A image file to the internal SD card")
-
-		time.Sleep(10 * time.Millisecond)
-
+		menuItemChan := d.AddMenuItem("Send Image", "Send A image file to the internal SD card")
+		menuItem := <-menuItemChan
 		for {
 			<-menuItem.ClickedCh
-			filename, err := dialog.File().Filter("ByteImage", "b").Title("SendImage").Load()
+			filename, err := dialog.File().Filter("ByteImage", "b").Title("Send Image").Load()
 			if err != nil {
 				break
 			}
 			PathElements := strings.Split(filename, "\\")
 			sdFilename := PathElements[len(PathElements)-1]
 			serSD.SendFile(filename, sdFilename)
+			dialog.Message("%s", "File Transfer done").Title("Send Image").Info()
 		}
 	}()
-
+	time.Sleep(5 * time.Millisecond)
 	// Tray Menu item: List Files
 	go func() {
-		menuItem := <-d.AddMenuItem("List Files", "List the files on the sd card")
-
-		time.Sleep(10 * time.Millisecond)
-
+		menuItemChan := d.AddMenuItem("List Files", "List the files on the sd card")
+		menuItem := <-menuItemChan
 		for {
 			<-menuItem.ClickedCh
 			files, _ := serSD.ListDir()
@@ -124,13 +133,11 @@ func main() {
 			dialog.Message("%s", filesSingle).Title("SD Files").Info()
 		}
 	}()
-
+	time.Sleep(5 * time.Millisecond)
 	// Tray Menu Item : Turn off displays
 	go func() {
-		menuItem := <-d.AddMenuItem("Displays Off", "If the config reloads it will turn off all the displays")
-
-		time.Sleep(10 * time.Millisecond)
-
+		menuItemChan := d.AddMenuItem("Displays Off", "If the config reloads it will turn off all the displays")
+		menuItem := <-menuItemChan
 		for {
 			<-menuItem.ClickedCh
 			resumeAfter := serial.IsRunning()
@@ -179,6 +186,9 @@ func main() {
 				serial.Pause()
 
 				cfgDSP.Load()
+
+				sessionMap = d.GetSessionMap()
+				sliderMap = d.GetSliderMap()
 
 				loadDSPMapings(modlogger)
 				modlogger.Named("Serial").Debug("Flushing")
@@ -238,12 +248,11 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				SessionAtSlider, _ := sessionMap.Get(autoMappedImage)
 				if SessionAtSlider != nil {
 					// get the icon path
-					iconPathFull := SessionAtSlider[0].GetIconPath()
-					icoPathElements := strings.Split(iconPathFull, "\\")
-					icoFileName := icoPathElements[len(icoPathElements)-1]
-					sdname := deejdsp.CreateFileName(icoFileName)
+					programname := strings.Split(SessionAtSlider[0].Key(), ".")[0]
+					sdname := deejdsp.CreateFileName(programname)
+
 					// if the program has a iconpath cont
-					if len(iconPathFull) > 0 {
+					if len(programname) > 0 {
 
 						// Check if the file exsits on the card
 						pregenerated, _ := serSD.CheckForFile(sdname)
@@ -252,8 +261,9 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 						// pregenerated = false
 
 						// generate a new image if it doesnt exsist
-						if !pregenerated {
-							slicedIMG, err := deejdsp.GetAndConvertIMG(iconPathFull, 0, cfgDSP.BWThreshold)
+						if !pregenerated && useIconFinder {
+							qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
+							slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
 							if err != nil {
 								modlogger.Errorf("No Image found at the filepath")
 								break
@@ -268,8 +278,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 						}
 						serDSP.SetImage(sdname)
 						serDSP.DisplayOn()
-						modlogger.Debugf("file path of slider %d: %s", key, iconPathFull)
-						modlogger.Debugf("%d: program %q localfile %q", key, icoFileName, sdname)
+						modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 					} else {
 						modlogger.Debugf("No Session Mapped for Slider %d", key)
 					}
