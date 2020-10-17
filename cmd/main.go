@@ -248,6 +248,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				SessionAtSlider, _ := sessionMap.Get(autoMappedImage)
 				if SessionAtSlider != nil {
 					// get the icon path
+
 					programname := strings.Split(SessionAtSlider[0].Key(), ".")[0]
 					sdname := deejdsp.CreateFileName(programname)
 
@@ -256,12 +257,9 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 
 						// Check if the file exsits on the card
 						pregenerated, _ := serSD.CheckForFile(sdname)
-
-						// Testing to always generate an image
-						// pregenerated = false
-
+						customImage, _ := serSD.CheckForFile(programname + ".b")
 						// generate a new image if it doesnt exsist
-						if !pregenerated && useIconFinder {
+						if !pregenerated && useIconFinder && !customImage {
 							qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
 							slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
 							if err != nil {
@@ -275,13 +273,19 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 								}
 							}
 							serSD.SendByteSlice(byteslice, sdname)
+						} else {
+							if customImage {
+								serDSP.SetImage(programname + ".b")
+							} else {
+								serDSP.SetImage(sdname)
+							}
 						}
-						serDSP.SetImage(sdname)
 						serDSP.DisplayOn()
 						modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 					} else {
 						modlogger.Debugf("No Session Mapped for Slider %d", key)
 					}
+
 				}
 			}
 		}
