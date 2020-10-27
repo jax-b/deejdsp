@@ -29,7 +29,11 @@ var (
 	sessionMap *deej.SessionMap
 	sliderMap  *deej.SliderMap
 	icofdrapi  *iconfinderapi.Iconfinder
+
+	crntDSPimg map[int]string
 )
+
+const stopDelay = 50 * time.Millisecond
 
 func init() {
 	flag.BoolVar(&verbose, "verbose", false, "show verbose logs (useful for debugging serial)")
@@ -98,9 +102,11 @@ func main() {
 	}
 
 	//Set up all modules
-	serSD, err = deejdsp.NewSerialSD(serial, modlogger)
+	serSD, err = deejdsp.NewSerialSD(serial, modlogger, verbose)
 	serTCA, err = deejdsp.NewSerialTCA(serial, modlogger)
 	serDSP, err = deejdsp.NewSerialDSP(serial, modlogger)
+
+	crntDSPimg = make(map[int]string)
 
 	// Tray Menu item: Send Image
 	go func() {
@@ -156,6 +162,26 @@ func main() {
 			}
 		}
 	}()
+	time.Sleep(5 * time.Millisecond)
+	// Tray Menu Item : Reconfig Displays
+	go func() {
+		menuItemChan := d.AddMenuItem("Displays On", "Turns on the displays to the images in the config")
+		menuItem := <-menuItemChan
+		for {
+			<-menuItem.ClickedCh
+			resumeAfter := serial.IsRunning()
+
+			if serial.IsRunning() {
+				serial.Pause()
+			}
+
+			loadDSPMapings(modlogger)
+
+			if resumeAfter {
+				serial.Start()
+			}
+		}
+	}()
 	_ = serSD
 
 	sessionMap = d.GetSessionMap()
@@ -170,14 +196,10 @@ func main() {
 
 	//Initalise the Displays
 	loadDSPMapings(modlogger)
-	modlogger.Named("Serial").Debug("Flushing")
-	serial.Flush(modlogger)
 
 	// Detect Config Reload
 	go func() {
 		configReloadedChannel := d.SubscribeToChanges()
-
-		const stopDelay = 50 * time.Millisecond
 
 		for {
 			select {
@@ -191,11 +213,11 @@ func main() {
 				sliderMap = d.GetSliderMap()
 
 				loadDSPMapings(modlogger)
+
 				modlogger.Named("Serial").Debug("Flushing")
 				serial.Flush(modlogger)
 				// let the connection close
 				<-time.After(stopDelay)
-				//Initalise the Displays
 
 				serial.Start()
 			}
@@ -215,7 +237,9 @@ func main() {
 	// 		}
 	// 	}
 	// }()
-
+	serial.Flush(modlogger)
+	// let the connection close
+	<-time.After(stopDelay)
 	d.Start()
 
 }
@@ -232,14 +256,16 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 	for key, value := range cfgDSP.DisplayMapping {
 		serTCA.SelectPort(uint8(key))
 		if value != "auto" { // Set to name in the customised image
-			fileExsists, _ := serSD.CheckForFile(value)
-			if fileExsists {
-				serDSP.SetImage(string(value))
-				serDSP.DisplayOn()
-				modlogger.Debugf("%d: %q", key, value)
-			} else {
-				modlogger.Debugf("%d: imagefile with name %q does not exsist on remote", key, value)
+			if value != crntDSPimg[key] {
+				fileExsists, _ := serSD.CheckForFile(value)
+				if fileExsists {
+					serDSP.SetImage(string(value))
+					modlogger.Debugf("%d: %q", key, value)
+				} else {
+					modlogger.Debugf("%d: imagefile with name %q does not exsist on remote", key, value)
+				}
 			}
+			serDSP.DisplayOn()
 		} else if len(value) <= 0 { // Turn the display off if nothing is set
 			serDSP.DisplayOff()
 		} else if value == "auto" { // if its set to auto: Generate a image if it does not exsist and send it to the SD card
@@ -252,40 +278,50 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 					programname := strings.Split(SessionAtSlider[0].Key(), ".")[0]
 					sdname := deejdsp.CreateFileName(programname)
 
-					// if the program has a iconpath cont
-					if len(programname) > 0 {
-
-						// Check if the file exsits on the card
-						pregenerated, _ := serSD.CheckForFile(sdname)
-						customImage, _ := serSD.CheckForFile(programname + ".b")
-						// generate a new image if it doesnt exsist
-						if !pregenerated && useIconFinder && !customImage {
-							qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
-							slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
-							if err != nil {
-								modlogger.Errorf("No Image found at the filepath")
-								break
-							}
-							var byteslice []byte
-							for _, value := range slicedIMG {
-								for _, value2 := range value {
-									byteslice = append(byteslice, value2)
-								}
-							}
-							serSD.SendByteSlice(byteslice, sdname)
-						} else {
-							if customImage {
-								serDSP.SetImage(programname + ".b")
-							} else {
-								serDSP.SetImage(sdname)
+					// Check if the file exsits on the card
+					pregenerated, _ := serSD.CheckForFile(sdname)
+					customImage, _ := serSD.CheckForFile(programname + ".b")
+					// generate a new image if it doesnt exsist
+					if !pregenerated && useIconFinder && !customImage {
+						//Get Icon from API and convert it to byteslices
+						qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
+						slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
+						if err != nil {
+							modlogger.Errorf("No Image found at the filepath")
+							break
+						}
+						// Convert to a single long slice
+						var byteslice []byte
+						for _, value := range slicedIMG {
+							for _, value2 := range value {
+								byteslice = append(byteslice, value2)
 							}
 						}
-						serDSP.DisplayOn()
+						// Send Slice to the SD card
+						serSD.SendByteSlice(byteslice, sdname)
+
+						// Store the current mapping
+						crntDSPimg[key] = sdname
+						serDSP.SetImage(sdname)
 						modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 					} else {
-						modlogger.Debugf("No Session Mapped for Slider %d", key)
+						if customImage {
+							if crntDSPimg[key] != programname+".b" {
+								crntDSPimg[key] = programname + ".b"
+								serDSP.SetImage(programname + ".b")
+								modlogger.Debugf("%d: program %q localfile %q", key, programname, programname+".b")
+							}
+						} else {
+							if crntDSPimg[key] != sdname {
+								crntDSPimg[key] = sdname
+								serDSP.SetImage(sdname)
+								modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
+							}
+						}
 					}
-
+					serDSP.DisplayOn()
+				} else {
+					modlogger.Debugf("No Session Mapped for Slider %d", key)
 				}
 			}
 		}

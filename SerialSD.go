@@ -17,14 +17,16 @@ type SerialSD struct {
 	sio      *deej.SerialIO
 	logger   *zap.SugaredLogger
 	cmddelay time.Duration
+	verbose  bool
 }
 
 // NewSerialSD Creates a new sd object
-func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialSD, error) {
+func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger, verbose bool) (*SerialSD, error) {
 	sdlogger := logger.Named("SD")
 	serSD := &SerialSD{
-		sio:    sio,
-		logger: sdlogger,
+		sio:     sio,
+		logger:  sdlogger,
+		verbose: verbose,
 	}
 	return serSD, nil
 }
@@ -38,6 +40,9 @@ func (serSD *SerialSD) CheckForFile(filename string) (bool, error) {
 	}
 	for _, value := range filelist {
 		value = strings.ToLower(value)
+		if serSD.verbose {
+			serSD.logger.Debugf("%s compared to %s", value, filename)
+		}
 		if strings.EqualFold(value, filename) {
 			return true, nil
 		}

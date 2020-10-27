@@ -210,7 +210,6 @@ void checkForCommand() {
         }
         // Any Time intensive calls should be monitored by deej
         // Will waitfor DONE
-        Serial.println("DONE");
       }
 
       // Turn a display off
@@ -255,9 +254,6 @@ void checkForCommand() {
         File root = SD.open("/");
         sdPrintDirectory(root, 0);
         root.close();
-        // Any Time intensive calls should be monitored by deej
-        // Will waitfor DONE
-        Serial.println("DONE");
       }
 
       // delete a file on the sd card
@@ -310,6 +306,9 @@ void sdPrintDirectory(File dir, int numTabs) {
       delay(2);
     }
   }
+  // Any Time intensive calls should be monitored by deej
+  // Will waitfor DONE
+  Serial.println("DONE");
 }
 
 // SD Card send file

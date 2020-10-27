@@ -95,8 +95,6 @@ func CreateAutoMap(SliderMap *deej.SliderMap, SessionMap *deej.SessionMap) map[i
 				break
 			}
 		}
-		fmt.Print("Hello")
 	})
-	fmt.Print("world")
 	return AutoMap
 }
