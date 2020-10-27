@@ -16,7 +16,7 @@ ECHO - gitCommit %GIT_COMMIT%
 ECHO - versionTag %VERSION_TAG%
 ECHO - buildType %BUILD_TYPE%
 
-go build -o "%DEEJ_ROOT%\deej-release.exe" -ldflags "-H=windowsgui -s -w -X main.gitCommit=%GIT_COMMIT% -X main.versionTag=%VERSION_TAG% -X main.buildType=%BUILD_TYPE%" "%DEEJ_ROOT%\cmd"
+go build -o "%DEEJ_ROOT%\deejdsp-release.exe" -ldflags "-H=windowsgui -s -w -X main.gitCommit=%GIT_COMMIT% -X main.versionTag=%VERSION_TAG% -X main.buildType=%BUILD_TYPE%" "%DEEJ_ROOT%\cmd"
 ECHO Done.
 GOTO DONE
 

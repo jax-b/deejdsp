@@ -11,5 +11,5 @@ echo "- gitCommit $GIT_COMMIT"
 echo "- versionTag $VERSION_TAG"
 echo "- buildType $BUILD_TYPE"
 
-go build -o deej-dev -ldflags "-X main.gitCommit=$GIT_COMMIT -X main.versionTag=$VERSION_TAG -X main.buildType=$BUILD_TYPE" ./cmd
+go build -o deejdsp-dev -ldflags "-X main.gitCommit=$GIT_COMMIT -X main.versionTag=$VERSION_TAG -X main.buildType=$BUILD_TYPE" ./cmd
 echo 'Done.'
