@@ -7,11 +7,8 @@ slider_mapping:
     - firefox.exe                                    # FireFox
     - chrome.exe                                     # Chrome
     - TwitchUI.exe                                   # Twitch
-    - HuluLLC.HuluPlus_2.5.5.0_neutral__fphbd361v8ty # Hulu
-    - 4DF9E0F8.Netflix_6.96.725.0_x64__mcm4njqhnhss8 # Netflix
   2: # Music
     - Spotify.exe                       # Spotify
-    - Microsoft.ZuneMusic_10.20032.12611.0_x64__8wekyb3d8bbwe # Builtin Media Player
   3: 
     - discord.exe                       # Discord
     - ts3client_win64.exe               # TeamSpeak 3
@@ -38,6 +35,8 @@ slider_mapping:
 # Keep it to 8 characters not including the extention to fit in the arduino SD library
 # You can specify a custom name, auto or nothing
 # auto: automatically generate a image from current mapped session to slider
+#       if you dont like the generated image you can make your own place a image file on the sd card with the name of the program
+#       auto will still map the image with the same name as the current session on that slider (only matches the first 8 char)
 # Custom Name: sends that name directly to the screen
 # Nothing: turns off the display
 display_mapping:
@@ -45,7 +44,7 @@ display_mapping:
   1: auto
   2: auto
   3: auto
-  4: auto
+  4: controler.b
   5: auto
 
 # set this to true if you want the controls inverted (i.e. top is 0%, bottom is 100%)
