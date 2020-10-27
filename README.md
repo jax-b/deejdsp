@@ -1,4 +1,4 @@
-# deejdsp
+# deejdsp ![Build](https://github.com/jax-b/deejdsp/workflows/Build/badge.svg)
 
 ## This is a deej project that uses custom written plugins to support displays!
 This uses my modifed fork of deej. This is still in the development phase but expect to see a more finished version soon (never mind on the soon part)! Its Highly recomended that you use a microcontroller base around the Atmega32u4 (like a arduino leonardo or micro) 
