@@ -1,7 +1,7 @@
 #include "arduino.h"
 #include <SPI.h>
 #include <Wire.h>
-#include <SD.h>
+#include "SdFat.h"
 #include "ssd1306CMDS.h"
 #include <avr/wdt.h>
 
@@ -37,6 +37,8 @@ bool sysSleep;
 // Constend Send
 bool pushSliderValuesToPC = false;
 
+SdFat sd;
+
 String outboundCommands = "";
 
 void setup() { 
@@ -49,9 +51,9 @@ void setup() {
   Serial.print("INITBEGIN ");
   
   Serial.print("SDINIT ");
-  if (!SD.begin(SDCSPIN)){
+  if (!sd.begin(SDCSPIN, SD_SCK_MHZ(50))){
     Serial.println("SDERROR ");
-//    SD.initErrorHalt();
+    // sd.initErrorHalt();
     delay(5000);
     reboot();
   }
@@ -157,6 +159,7 @@ void checkForCommand() {
   if (Serial.available() > 0) {
     //Get start time of command
     unsigned long timeStart = millis();
+
     lastcommand = millis();
     if(sysSleep) {
       sysSleep = false;
@@ -165,6 +168,7 @@ void checkForCommand() {
         dspOn(IICDSPADDR);
       }
     }
+    
     //Get data from Serial
     String input = Serial.readStringUntil('\n');  // Read chars from serial monitor
 
@@ -230,7 +234,7 @@ void checkForCommand() {
           Serial.println("TIMEOUT");
         }
         else {
-          if (!SD.exists(filename.c_str())){
+          if (!sd.exists(filename.c_str())){
             Serial.print("FILENOTFOUND");
           }
           else {
@@ -239,6 +243,7 @@ void checkForCommand() {
         }
         // Any Time intensive calls should be monitored by deej
         // Will waitfor DONE
+        Serial.println("DONE");
       }
 
       // Turn a display off
@@ -267,7 +272,7 @@ void checkForCommand() {
           Serial.println("TIMEOUT");
         }
         else {
-          if (SD.exists(filename)){
+          if (sd.exists(filename.c_str())){
             sdDelete(filename);
             Serial.println("OVERWRITE");
           }
@@ -280,9 +285,10 @@ void checkForCommand() {
       
       // List the files on the sd card
       else if ( input.equalsIgnoreCase("deej.modules.sd.list") == true){
-        File root = SD.open("/");
+        File root = sd.open("/");
         sdPrintDirectory(root, 0);
         root.close();
+        Serial.println("DONE");
       }
 
       // delete a file on the sd card
@@ -313,7 +319,6 @@ void checkForCommand() {
 // SD Card List Files
 void sdPrintDirectory(File dir, int numTabs) {
   while (true) {
-
     File entry =  dir.openNextFile();
     if (! entry) {
       // no more files
@@ -322,58 +327,54 @@ void sdPrintDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       Serial.print('\t');
     }
-    String entryname = entry.name();
-    if ( !entryname.equals("SYSTEM~1")) {
-      Serial.print(entryname);
+    char filename[64];
+    entry.getName(filename, 64);
+    if (strcmp(filename, "System Volume Information") != 0) {
+      Serial.print(filename);
       if (entry.isDirectory()) {
         Serial.println("/");
         sdPrintDirectory(entry, numTabs + 1);
       } else {
         Serial.println();
       }
-      entry.close();
-      delay(2);
     }
+    entry.close();
+    delay(5);    
   }
   // Any Time intensive calls should be monitored by deej
   // Will waitfor DONE
-  Serial.println("DONE");
 }
 
 // SD Card send file
 void sdPutFile(const String filename) {
-  File daFile = SD.open(filename, FILE_WRITE );
-  if (daFile) {
+  if (sd.exists(filename.c_str())) {
+      Serial.println("OVERWRITE");
+      sd.remove(filename.c_str());
+    }
+
     Serial.println("WAITINGEOF");
   
+    File imgFile = sd.open(filename, FILE_WRITE );
     int16_t last3[3] = {-1,-1,-1};
     while ( !(last3[0] == 'E' && last3[1] == 'O' && last3[2] == 'F') ) {
-      int nextByte = Serial.read();
-      if (nextByte != -1) {
         if ( last3[0] != -1 ) {
-          uint8_t byteToWrite = last3[0];
-          int success = daFile.write(byteToWrite);
-          if (success == -1 || success == 0) {
-            Serial.println("error");
-          }
-//          Serial.println(last3[0]);
+          imgFile.print((char) last3[0]);
         }
         last3[0] = last3[1];
         last3[1] = last3[2];
+        while (Serial.peek() == -1);
+        int nextByte = Serial.read();
+        if (nextByte != -1) {
         last3[2] = nextByte;
       }
     }
+    imgFile.sync(); 
+    imgFile.close();
      
-    daFile.close();
-    Serial.println("EOFDETECT");
     while(Serial.available() > 0) {
       Serial.read();
     }
-  } else {
-    Serial.println("FILEERR");
-    return;
-  }
-  
+    Serial.println("EOFDETECT"); 
 }
 
 // SD Card delete file
@@ -382,11 +383,11 @@ void sdDelete(const String filename) {
   
   filename.toCharArray(charbuff, filename.length()+1);
   
-  if (!SD.exists(charbuff)){
+  if (!sd.exists(charbuff)){
     Serial.println("FILENOTFOUND");
   }
   else {
-    SD.remove(charbuff);
+    sd.remove(charbuff);
     Serial.println("FILEDELETED");
   }
 }
@@ -506,7 +507,7 @@ void dspClear(uint8_t addr){
 void dspSetImage(uint8_t addr, String imagefilename) {
   // open the image file
   // also this file should almost allways contain 8192 bytes
-  File imgFile = SD.open(imagefilename, FILE_READ);
+  File imgFile = sd.open(imagefilename, O_READ);
   
   // clear the display not needed as it will get replaced anyways
   // dspClear(addr);
