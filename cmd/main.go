@@ -279,6 +279,9 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				// Check if the file exsits on the card
 				pregenerated, _ := serSD.CheckForFile(sdname)
 				customImage, _ := serSD.CheckForFile(programname + ".b")
+				if customImage == false {
+					customImage, _ = serSD.CheckForFile(strings.ToLower(programname) + ".b")
+				}
 				// generate a new image if it doesnt exsist
 				if !pregenerated && useIconFinder && !customImage {
 					//Get Icon from API and convert it to byteslices
