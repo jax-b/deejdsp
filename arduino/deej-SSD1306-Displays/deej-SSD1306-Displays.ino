@@ -14,6 +14,7 @@
 #define SERIALSPEED 115200
 #define NUM_DISPLAYS 6
 #define SERIALTIMEOUT 2000
+#define SLEEPDETECTION 10000
 
 const uint8_t analogInputs[NUM_SLIDERS] = {A0,A1,A2,A3,A6,A7};
 
@@ -28,6 +29,10 @@ const uint8_t analogInputs[NUM_SLIDERS] = {A0,A1,A2,A3,A6,A7};
 #define SDCSPIN 5
 
 uint16_t analogSliderValues[NUM_SLIDERS];
+
+// Detect Host System Sleep
+unsigned long lastcommand;
+bool sysSleep;
 
 // Constend Send
 bool pushSliderValuesToPC = false;
@@ -62,6 +67,9 @@ void setup() {
 //    }
 //    dspSendData(IICDSPADDR, i+1);
   }
+
+  sysSleep = false;
+
   Serial.println("INITDONE");
 }
 
@@ -74,8 +82,22 @@ void loop() {
   if(pushSliderValuesToPC) {
     sendSliderValues(); // Actually send data
   }
+
+  if (millis() - lastcommand >= SLEEPDETECTION) {
+    for (int i = 0; i < NUM_DISPLAYS; i++) {
+      tcaselect(IICMULTIPLEXADDR, i);
+      dspOff(IICDSPADDR);
+    }
+    sysSleep = true;
+  }
+
   // printSliderValues(); // For debug
-  delay(10);
+
+  if (sysSleep) {
+    delay(500);
+  } else {
+    delay(10);
+  }
 }
 
 void reboot() {
@@ -135,7 +157,14 @@ void checkForCommand() {
   if (Serial.available() > 0) {
     //Get start time of command
     unsigned long timeStart = millis();
-
+    lastcommand = millis();
+    if(sysSleep) {
+      sysSleep = false;
+        for (int i = 0; i < NUM_DISPLAYS; i++) {
+        tcaselect(IICMULTIPLEXADDR, i);
+        dspOn(IICDSPADDR);
+      }
+    }
     //Get data from Serial
     String input = Serial.readStringUntil('\n');  // Read chars from serial monitor
 
