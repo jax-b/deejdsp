@@ -147,7 +147,7 @@ func main() {
 		for {
 			<-menuItem.ClickedCh
 			resumeAfter := serial.IsRunning()
-
+			modlogger.Named("Displays").Debug("Turning Off Displays")
 			if serial.IsRunning() {
 				serial.Pause()
 			}
@@ -271,58 +271,51 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 		} else if value == "auto" { // if its set to auto: Generate a image if it does not exsist and send it to the SD card
 			//get the audio session from deej using the AutoMap
 			if autoMappedImage, ok := AutoMap[key]; ok {
-				SessionAtSlider, _ := sessionMap.Get(autoMappedImage)
-				if SessionAtSlider != nil {
-					// get the icon path
+				programname := strings.Split(autoMappedImage, ".")[0]
+				sdname := deejdsp.CreateFileName(programname)
 
-					programname := strings.Split(SessionAtSlider[0].Key(), ".")[0]
-					sdname := deejdsp.CreateFileName(programname)
-
-					// Check if the file exsits on the card
-					pregenerated, _ := serSD.CheckForFile(sdname)
-					customImage, _ := serSD.CheckForFile(programname + ".b")
-					// generate a new image if it doesnt exsist
-					if !pregenerated && useIconFinder && !customImage {
-						//Get Icon from API and convert it to byteslices
-						qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
-						slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
-						if err != nil {
-							modlogger.Errorf("No Image found at the filepath")
-							break
-						}
-						// Convert to a single long slice
-						var byteslice []byte
-						for _, value := range slicedIMG {
-							for _, value2 := range value {
-								byteslice = append(byteslice, value2)
-							}
-						}
-						// Send Slice to the SD card
-						serSD.SendByteSlice(byteslice, sdname)
-
-						// Store the current mapping
-						crntDSPimg[key] = sdname
-						serDSP.SetImage(sdname)
-						modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
-					} else {
-						if customImage {
-							if crntDSPimg[key] != programname+".b" {
-								crntDSPimg[key] = programname + ".b"
-								serDSP.SetImage(programname + ".b")
-								modlogger.Debugf("%d: program %q localfile %q", key, programname, programname+".b")
-							}
-						} else {
-							if crntDSPimg[key] != sdname {
-								crntDSPimg[key] = sdname
-								serDSP.SetImage(sdname)
-								modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
-							}
+				// Check if the file exsits on the card
+				pregenerated, _ := serSD.CheckForFile(sdname)
+				customImage, _ := serSD.CheckForFile(programname + ".b")
+				// generate a new image if it doesnt exsist
+				if !pregenerated && useIconFinder && !customImage {
+					//Get Icon from API and convert it to byteslices
+					qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
+					slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
+					if err != nil {
+						modlogger.Errorf("No Image found at the filepath")
+						break
+					}
+					// Convert to a single long slice
+					var byteslice []byte
+					for _, value := range slicedIMG {
+						for _, value2 := range value {
+							byteslice = append(byteslice, value2)
 						}
 					}
-					serDSP.DisplayOn()
+					// Send Slice to the SD card
+					serSD.SendByteSlice(byteslice, sdname)
+
+					// Store the current mapping
+					crntDSPimg[key] = sdname
+					serDSP.SetImage(sdname)
+					modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 				} else {
-					modlogger.Debugf("No Session Mapped for Slider %d", key)
+					if customImage {
+						if crntDSPimg[key] != programname+".b" {
+							crntDSPimg[key] = programname + ".b"
+							serDSP.SetImage(programname + ".b")
+							modlogger.Debugf("%d: program %q localfile %q", key, programname, programname+".b")
+						}
+					} else {
+						if crntDSPimg[key] != sdname {
+							crntDSPimg[key] = sdname
+							serDSP.SetImage(sdname)
+							modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
+						}
+					}
 				}
+				serDSP.DisplayOn()
 			}
 		}
 	}
