@@ -224,19 +224,21 @@ func main() {
 		}
 	}()
 
-	// go func() {
-	// 	sessionReloadedChannel := d.SubscribeToSessionReload()
+	go func() {
+		sessionReloadedChannel := d.SubscribeToSessionReload()
 
-	// 	for {
-	// 		select {
-	// 		case <-sessionReloadedChannel:
-	// 			serial.Pause()
-	// 			modlogger.Named("Display").Debug("Session Reload Detected")
-	// 			loadDSPMapings(modlogger)
-	// 			serial.Start()
-	// 		}
-	// 	}
-	// }()
+		for {
+			select {
+			case <-sessionReloadedChannel:
+				serial.Pause()
+				modlogger.Named("Display").Debug("Session Reload Detected")
+				loadDSPMapings(modlogger)
+				serial.Start()
+			}
+			time.Sleep(15 * time.Second)
+		}
+	}()
+
 	serial.Flush(modlogger)
 	// let the connection close
 	<-time.After(stopDelay)
