@@ -14,4 +14,4 @@ require (
 
 )
 
-replace github.com/jax-b/deej v0.9.10 => ../deej
+// replace github.com/jax-b/deej v0.9.10 => ../deej
