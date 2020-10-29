@@ -226,16 +226,36 @@ func main() {
 
 	go func() {
 		sessionReloadedChannel := d.SubscribeToSessionReload()
-
+		// Wait till after startup
+		time.Sleep(15 * time.Second)
+		// Clear any reloads that were triggerd
+	Loop1:
 		for {
 			select {
 			case <-sessionReloadedChannel:
-				serial.Pause()
-				modlogger.Named("Display").Debug("Session Reload Detected")
-				loadDSPMapings(modlogger)
-				serial.Start()
+			case <-time.After(15 * time.Millisecond):
+				break Loop1
 			}
+		}
+
+		for {
+			<-sessionReloadedChannel
+			serial.Pause()
+			modlogger.Named("Display").Debug("Session Reload Detected")
+			loadDSPMapings(modlogger)
+			serial.Start()
+
+			// Minimum deley bettween session reloads for serial
 			time.Sleep(15 * time.Second)
+			// Clear any reloads that were triggerd
+		Loop2:
+			for {
+				select {
+				case <-sessionReloadedChannel:
+				case <-time.After(15 * time.Millisecond):
+					break Loop2
+				}
+			}
 		}
 	}()
 
@@ -263,6 +283,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				if fileExsists {
 					serDSP.SetImage(string(value))
 					modlogger.Debugf("%d: %q", key, value)
+					crntDSPimg[key] = value
 				} else {
 					modlogger.Debugf("%d: imagefile with name %q does not exsist on remote", key, value)
 				}
