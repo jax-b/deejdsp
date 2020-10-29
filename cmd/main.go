@@ -226,6 +226,7 @@ func main() {
 
 	go func() {
 		sessionReloadedChannel := d.SubscribeToSessionReload()
+		// configReloadedChannel := d.SubscribeToChanges()
 		// Wait till after startup
 		time.Sleep(15 * time.Second)
 		// Clear any reloads that were triggerd
@@ -233,12 +234,14 @@ func main() {
 		for {
 			select {
 			case <-sessionReloadedChannel:
-			case <-time.After(15 * time.Millisecond):
+			case <-time.After(5 * time.Millisecond):
 				break Loop1
 			}
 		}
 
 		for {
+
+			// switch {
 			<-sessionReloadedChannel
 			serial.Pause()
 			modlogger.Named("Display").Debug("Session Reload Detected")
@@ -246,16 +249,19 @@ func main() {
 			serial.Start()
 
 			// Minimum deley bettween session reloads for serial
-			time.Sleep(15 * time.Second)
+			time.Sleep(1 * time.Second)
 			// Clear any reloads that were triggerd
 		Loop2:
 			for {
 				select {
 				case <-sessionReloadedChannel:
-				case <-time.After(15 * time.Millisecond):
+				case <-time.After(20 * time.Millisecond):
 					break Loop2
 				}
 			}
+			// case <-configReloadedChannel:
+			// 	time.Sleep(1 * time.Second)
+			// }
 		}
 	}()
 
@@ -342,6 +348,8 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 					}
 				}
 				serDSP.DisplayOn()
+			} else {
+				serDSP.DisplayOff()
 			}
 		}
 	}
