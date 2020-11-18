@@ -63,7 +63,9 @@ void setup() {
     tcaselect(IICMULTIPLEXADDR, i);
     dspInit(IICDSPADDR);
     dspClear(IICDSPADDR);
-//    dspSendCommand(IICDSPADDR, SSD1306_INVERTDISPLAY);
+//    dspSendCommand(IICDSPADDR, OLED_DISPLAYINVERT);
+//    delay(100);
+//    dspSendCommand(IICDSPADDR, OLED_DISPLAYNORMAL);
 //    for (int j = 0; j <= i; j++) {
 //      dspSendData(IICDSPADDR, 0xFF);
 //    }

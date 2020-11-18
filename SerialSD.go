@@ -3,6 +3,7 @@ package deejdsp
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -18,26 +19,33 @@ type SerialSD struct {
 	logger   *zap.SugaredLogger
 	cmddelay time.Duration
 	verbose  bool
+	siu      *SerialInUse
 }
 
 // NewSerialSD Creates a new sd object
-func NewSerialSD(sio *deej.SerialIO, logger *zap.SugaredLogger, verbose bool) (*SerialSD, error) {
+func NewSerialSD(sio *deej.SerialIO, siu *SerialInUse, logger *zap.SugaredLogger, verbose bool) (*SerialSD, error) {
 	sdlogger := logger.Named("SD")
 	serSD := &SerialSD{
 		sio:     sio,
 		logger:  sdlogger,
 		verbose: verbose,
+		siu:     siu,
 	}
 	return serSD, nil
 }
 
 // CheckForFile Checks if a file exsists on the SD card
 func (serSD *SerialSD) CheckForFile(filename string) (bool, error) {
-	filename = strings.ToLower(filename)
 	filelist, err := serSD.ListDir()
 	if err != nil {
 		return false, err
 	}
+	return serSD.CheckForFileLOAD(filename, filelist)
+}
+
+// CheckForFile Checks if a file exsists on the SD card
+func (serSD *SerialSD) CheckForFileLOAD(filename string, filelist []string) (bool, error) {
+	filename = strings.ToLower(filename)
 	for _, value := range filelist {
 		value = strings.ToLower(value)
 		if serSD.verbose {
@@ -61,15 +69,23 @@ func (serSD *SerialSD) ListDir() ([]string, error) {
 	if serSD.sio.IsRunning() {
 		serSD.sio.Pause()
 	}
+	if serSD.siu.ExternalInUse() {
+		c := serSD.siu.JoinLine()
+		fmt.Print("Here")
+		<-c
+		c = nil
+	}
+	serSD.siu.PreformingTask()
 
-	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
 	var returnText []string
 	var SerialData string
 	lineChannel := serSD.sio.ReadLine(serSD.logger)
+	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
+	time.Sleep(time.Millisecond * 50)
 Loop:
 	for {
 		select {
-		case <-time.After(1 * time.Second):
+		case <-time.After(time.Second * 1):
 			break Loop
 		case SerialData = <-lineChannel:
 			SerialData = strings.Replace(SerialData, "\n", "", -1)
@@ -83,7 +99,7 @@ Loop:
 	}
 
 	lineChannel = nil
-
+	fmt.Println(returnText)
 	if serSD.cmddelay > (time.Microsecond * 1) {
 		time.Sleep(serSD.cmddelay)
 	}
@@ -91,17 +107,22 @@ Loop:
 	if resumeAfter {
 		serSD.sio.Start()
 	}
-
+	serSD.siu.Done()
 	return returnText, nil
 }
 
 // Delete deletes a file off of the SD card
 func (serSD *SerialSD) Delete(filename string) error {
 	resumeAfter := serSD.sio.IsRunning()
-
 	if serSD.sio.IsRunning() {
 		serSD.sio.Pause()
 	}
+	if serSD.siu.ExternalInUse() {
+		c := serSD.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serSD.siu.PreformingTask()
 
 	filename = strings.ToUpper(filename)
 
@@ -112,11 +133,11 @@ func (serSD *SerialSD) Delete(filename string) error {
 	if serSD.cmddelay > (time.Microsecond * 1) {
 		time.Sleep(serSD.cmddelay)
 	}
-
+	serSD.siu.Done()
 	if resumeAfter {
 		serSD.sio.Start()
 	}
-
+	serSD.siu.Done()
 	return nil
 }
 
@@ -127,6 +148,12 @@ func (serSD *SerialSD) SendFile(filepath string, DestFilename string) error {
 	if serSD.sio.IsRunning() {
 		serSD.sio.Pause()
 	}
+	if serSD.siu.ExternalInUse() {
+		c := serSD.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serSD.siu.PreformingTask()
 
 	serSD.logger.Debugf("Sending %q to the SD Card with %q as the file name", filepath, DestFilename)
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.send")
@@ -200,7 +227,7 @@ Loop:
 	if resumeAfter {
 		serSD.sio.Start()
 	}
-
+	serSD.siu.Done()
 	return nil
 }
 
@@ -211,6 +238,12 @@ func (serSD *SerialSD) SendByteSlice(byteslice []byte, DestFilename string) erro
 	if serSD.sio.IsRunning() {
 		serSD.sio.Pause()
 	}
+	if serSD.siu.ExternalInUse() {
+		c := serSD.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serSD.siu.PreformingTask()
 
 	serSD.logger.Debugf("Sending bytes to the SD Card with %q as the file name", DestFilename)
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.send")
@@ -255,6 +288,6 @@ Loop:
 	if resumeAfter {
 		serSD.sio.Start()
 	}
-
+	serSD.siu.Done()
 	return nil
 }

@@ -12,15 +12,17 @@ import (
 // SerialDSP stuct for Serial Dispaly Objects
 type SerialDSP struct {
 	sio      *deej.SerialIO
+	siu      *SerialInUse
 	logger   *zap.SugaredLogger
 	cmddelay time.Duration
 }
 
 // NewSerialDSP Creates a new DSP object
-func NewSerialDSP(sio *deej.SerialIO, logger *zap.SugaredLogger) (*SerialDSP, error) {
+func NewSerialDSP(sio *deej.SerialIO, siu *SerialInUse, logger *zap.SugaredLogger) (*SerialDSP, error) {
 	sdlogger := logger.Named("Display")
 	serDSP := &SerialDSP{
 		sio:    sio,
+		siu:    siu,
 		logger: sdlogger,
 	}
 	return serDSP, nil
@@ -38,6 +40,12 @@ func (serDSP *SerialDSP) DisplayOn() error {
 	if serDSP.sio.IsRunning() {
 		serDSP.sio.Pause()
 	}
+	if serDSP.siu.ExternalInUse() {
+		c := serDSP.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serDSP.siu.PreformingTask()
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.on")
 
@@ -48,7 +56,7 @@ func (serDSP *SerialDSP) DisplayOn() error {
 	if resumeAfter {
 		serDSP.sio.Start()
 	}
-
+	serDSP.siu.Done()
 	return nil
 }
 
@@ -59,6 +67,12 @@ func (serDSP *SerialDSP) DisplayOff() error {
 	if serDSP.sio.IsRunning() {
 		serDSP.sio.Pause()
 	}
+	if serDSP.siu.ExternalInUse() {
+		c := serDSP.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serDSP.siu.PreformingTask()
 
 	serDSP.sio.WriteStringLine(serDSP.logger, "deej.modules.display.off")
 
@@ -69,7 +83,7 @@ func (serDSP *SerialDSP) DisplayOff() error {
 	if resumeAfter {
 		serDSP.sio.Start()
 	}
-
+	serDSP.siu.Done()
 	return nil
 }
 
@@ -80,6 +94,13 @@ func (serDSP *SerialDSP) SetImage(filename string) error {
 	if serDSP.sio.IsRunning() {
 		serDSP.sio.Pause()
 	}
+	if serDSP.siu.ExternalInUse() {
+		c := serDSP.siu.JoinLine()
+		<-c
+		c = nil
+	}
+	serDSP.siu.PreformingTask()
+
 	lineChannel := serDSP.sio.ReadLine(serDSP.logger)
 	select {
 	case <-time.After(350 * time.Millisecond):
@@ -127,6 +148,6 @@ Loop:
 	if resumeAfter {
 		serDSP.sio.Start()
 	}
-
+	serDSP.siu.Done()
 	return nil
 }

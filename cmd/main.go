@@ -26,6 +26,7 @@ var (
 	serSD      *deejdsp.SerialSD
 	serTCA     *deejdsp.SerialTCA
 	serDSP     *deejdsp.SerialDSP
+	SIUMonitor *deejdsp.SerialInUse
 	sessionMap *deej.SessionMap
 	sliderMap  *deej.SliderMap
 	icofdrapi  *iconfinderapi.Iconfinder
@@ -102,9 +103,12 @@ func main() {
 	}
 
 	//Set up all modules
-	serSD, err = deejdsp.NewSerialSD(serial, modlogger, verbose)
-	serTCA, err = deejdsp.NewSerialTCA(serial, modlogger)
-	serDSP, err = deejdsp.NewSerialDSP(serial, modlogger)
+
+	SIUMonitor = deejdsp.NewSerialInUse()
+
+	serSD, err = deejdsp.NewSerialSD(serial, SIUMonitor, modlogger, verbose)
+	serTCA, err = deejdsp.NewSerialTCA(serial, SIUMonitor, modlogger)
+	serDSP, err = deejdsp.NewSerialDSP(serial, SIUMonitor, modlogger)
 
 	crntDSPimg = make(map[int]string)
 
@@ -280,12 +284,13 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 	// Create an automap for the sessions
 	AutoMap := deejdsp.CreateAutoMap(sliderMap, sessionMap)
 	modlogger.Debugf("AutoMaped Sessions: %v", AutoMap)
+	sdfiles, _ := serSD.ListDir()
 	//for each screen go and check the config and finaly set the image
 	for key, value := range cfgDSP.DisplayMapping {
 		serTCA.SelectPort(uint8(key))
 		if value != "auto" { // Set to name in the customised image
 			if value != crntDSPimg[key] {
-				fileExsists, _ := serSD.CheckForFile(value)
+				fileExsists, _ := serSD.CheckForFileLOAD(value, sdfiles)
 				if fileExsists {
 					serDSP.SetImage(string(value))
 					modlogger.Debugf("%d: %q", key, value)
@@ -304,10 +309,10 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				sdname := deejdsp.CreateFileName(programname)
 
 				// Check if the file exsits on the card
-				pregenerated, _ := serSD.CheckForFile(sdname)
-				customImage, _ := serSD.CheckForFile(programname + ".b")
+				pregenerated, _ := serSD.CheckForFileLOAD(sdname, sdfiles)
+				customImage, _ := serSD.CheckForFileLOAD(programname+".b", sdfiles)
 				if customImage == false {
-					customImage, _ = serSD.CheckForFile(strings.ToLower(programname) + ".b")
+					customImage, _ = serSD.CheckForFileLOAD(strings.ToLower(programname)+".b", sdfiles)
 				}
 				// generate a new image if it doesnt exsist
 				if !pregenerated && useIconFinder && !customImage {
@@ -327,7 +332,7 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 					}
 					// Send Slice to the SD card
 					serSD.SendByteSlice(byteslice, sdname)
-
+					sdfiles = append(sdfiles, sdname)
 					// Store the current mapping
 					crntDSPimg[key] = sdname
 					serDSP.SetImage(sdname)
