@@ -3,7 +3,6 @@ package deejdsp
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -71,7 +70,6 @@ func (serSD *SerialSD) ListDir() ([]string, error) {
 	}
 	if serSD.siu.ExternalInUse() {
 		c := serSD.siu.JoinLine()
-		fmt.Print("Here")
 		<-c
 		c = nil
 	}
@@ -80,18 +78,28 @@ func (serSD *SerialSD) ListDir() ([]string, error) {
 	var returnText []string
 	var SerialData string
 	lineChannel := serSD.sio.ReadLine(serSD.logger)
-	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
-	time.Sleep(time.Millisecond * 50)
-Loop:
+
+Loop1:
 	for {
 		select {
-		case <-time.After(time.Second * 1):
-			break Loop
+		case <-lineChannel:
+		case <-time.After(time.Millisecond * 25):
+			break Loop1
+		}
+	}
+
+	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
+	time.Sleep(time.Millisecond * 5)
+Loop2:
+	for {
+		select {
+		case <-time.After(time.Second * 50):
+			break Loop2
 		case SerialData = <-lineChannel:
 			SerialData = strings.Replace(SerialData, "\n", "", -1)
 			SerialData = strings.Replace(SerialData, "\r", "", -1)
 			if SerialData == "DONE" {
-				break Loop
+				break Loop2
 			} else {
 				returnText = append(returnText, SerialData)
 			}
@@ -99,7 +107,6 @@ Loop:
 	}
 
 	lineChannel = nil
-	fmt.Println(returnText)
 	if serSD.cmddelay > (time.Microsecond * 1) {
 		time.Sleep(serSD.cmddelay)
 	}
