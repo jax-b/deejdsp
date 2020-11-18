@@ -51,6 +51,9 @@ func GetIconFromAPI(icofdr *iconfinderapi.Iconfinder, keyword string) (image.Ima
 // ConvertImage returns a byteslice with the converted image
 // Basicly a copy of the main test program in my ssd1306 file prep lib but we dont write it to a file
 func ConvertImage(srcimg image.Image, index int32, threshold int) ([][]byte, error) {
+	if srcimg == nil {
+		return nil, errors.New("srcimg equal to nil")
+	}
 	resizedImage := resize.Thumbnail(uint(displaySizeX), uint(displaySizeY), srcimg, resize.NearestNeighbor)
 
 	amountToCenter := (displaySizeX - resizedImage.Bounds().Max.X) / 2

@@ -89,11 +89,15 @@ func main() {
 	cfgDSP.Load()
 
 	// Create IconFinderAPI
-	if len(cfgDSP.IconFinderDotComAPIKey) > 0 {
+	if strings.EqualFold(cfgDSP.IconFinderDotComAPIKey, "silent") {
+		modlogger.Info("iconfinder.com apikey not set: in order to use online icons please enter a icon finder api key")
+		useIconFinder = false
+	} else if len(cfgDSP.IconFinderDotComAPIKey) > 0 && !strings.EqualFold(cfgDSP.IconFinderDotComAPIKey, "example") {
 		icofdrapi = iconfinderapi.NewIconFinder(cfgDSP.IconFinderDotComAPIKey)
 		useIconFinder = true
 	} else {
 		useIconFinder = false
+		modlogger.Info("iconfinder.com apikey not set: in order to use online icons please enter a icon finder api key")
 		d.Notifier.Notify("iconfinder.com apikey not set", "in order to use online icons please enter a icon finder api key")
 	}
 
@@ -318,25 +322,29 @@ func loadDSPMapings(modlogger *zap.SugaredLogger) {
 				if !pregenerated && useIconFinder && !customImage {
 					//Get Icon from API and convert it to byteslices
 					qualifiedico, err := deejdsp.GetIconFromAPI(icofdrapi, programname)
-					slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
 					if err != nil {
-						modlogger.Errorf("No Image found at the filepath")
-						break
-					}
-					// Convert to a single long slice
-					var byteslice []byte
-					for _, value := range slicedIMG {
-						for _, value2 := range value {
-							byteslice = append(byteslice, value2)
+						modlogger.Named("Display").Errorf("Could not get image from API, try generating your own image insted for %s: Error Text %s", programname, err.Error())
+					} else {
+						slicedIMG, err := deejdsp.ConvertImage(qualifiedico, 0, cfgDSP.BWThreshold)
+						if err != nil {
+							modlogger.Errorf("No Image found in qualifiedico")
+							break
 						}
+						// Convert to a single long slice
+						var byteslice []byte
+						for _, value := range slicedIMG {
+							for _, value2 := range value {
+								byteslice = append(byteslice, value2)
+							}
+						}
+						// Send Slice to the SD card
+						serSD.SendByteSlice(byteslice, sdname)
+						sdfiles = append(sdfiles, sdname)
+						// Store the current mapping
+						crntDSPimg[key] = sdname
+						serDSP.SetImage(sdname)
+						modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 					}
-					// Send Slice to the SD card
-					serSD.SendByteSlice(byteslice, sdname)
-					sdfiles = append(sdfiles, sdname)
-					// Store the current mapping
-					crntDSPimg[key] = sdname
-					serDSP.SetImage(sdname)
-					modlogger.Debugf("%d: program %q localfile %q", key, programname, sdname)
 				} else {
 					if customImage {
 						if crntDSPimg[key] != programname+".b" {

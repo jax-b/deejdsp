@@ -65,4 +65,5 @@ BlackWhite_Threshold: 175
 # it's recommended to leave this setting at its default value
 process_refresh_frequency: 50
 
+# set to silent to stop the notification
 IconFinderDotComAPIKey: example
