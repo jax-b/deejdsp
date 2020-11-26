@@ -217,9 +217,20 @@ func main() {
 
 				cfgDSP.Load()
 
+				// Update IconFinderAPIkey
+				if strings.EqualFold(cfgDSP.IconFinderDotComAPIKey, "silent") {
+					modlogger.Info("iconfinder.com apikey not set: in order to use online icons please enter a icon finder api key")
+					useIconFinder = false
+				} else if len(cfgDSP.IconFinderDotComAPIKey) > 0 && !strings.EqualFold(cfgDSP.IconFinderDotComAPIKey, "example") {
+					icofdrapi.ChangeAPIKey(cfgDSP.IconFinderDotComAPIKey)
+					useIconFinder = true
+				} else {
+					useIconFinder = false
+					modlogger.Info("iconfinder.com apikey not set: in order to use online icons please enter a icon finder api key")
+				}
+
 				sessionMap = d.GetSessionMap()
 				sliderMap = d.GetSliderMap()
-				if d.
 				loadDSPMapings(modlogger)
 
 				modlogger.Named("Serial").Debug("Flushing")
