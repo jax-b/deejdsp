@@ -51,7 +51,7 @@ display_mapping:
 invert_sliders: false
 
 # settings for connecting to the arduino board
-com_port: COM4
+com_port: COM3
 baud_rate: 115200
 
 # Time Delay (usedfull for slower microcontrollers)
