@@ -26,7 +26,7 @@ var (
 	serSD      *deejdsp.SerialSD
 	serTCA     *deejdsp.SerialTCA
 	serDSP     *deejdsp.SerialDSP
-	SIUMonitor *deejdsp.SerialInUse
+	siumonitor *deejdsp.SerialInUse
 	sessionMap *deej.SessionMap
 	sliderMap  *deej.SliderMap
 	icofdrapi  *iconfinderapi.Iconfinder
@@ -108,11 +108,11 @@ func main() {
 
 	//Set up all modules
 
-	SIUMonitor = deejdsp.NewSerialInUse()
+	siumonitor = deejdsp.NewSerialInUse()
 
-	serSD, err = deejdsp.NewSerialSD(serial, SIUMonitor, modlogger, verbose)
-	serTCA, err = deejdsp.NewSerialTCA(serial, SIUMonitor, modlogger)
-	serDSP, err = deejdsp.NewSerialDSP(serial, SIUMonitor, modlogger)
+	serSD, err = deejdsp.NewSerialSD(serial, siumonitor, modlogger, verbose)
+	serTCA, err = deejdsp.NewSerialTCA(serial, siumonitor, modlogger)
+	serDSP, err = deejdsp.NewSerialDSP(serial, siumonitor, modlogger)
 
 	crntDSPimg = make(map[int]string)
 
@@ -132,7 +132,7 @@ func main() {
 			dialog.Message("%s", "File Transfer done").Title("Send Image").Info()
 		}
 	}()
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
 	// Tray Menu item: List Files
 	go func() {
 		menuItemChan := d.AddMenuItem("List Files", "List the files on the sd card")
@@ -147,7 +147,7 @@ func main() {
 			dialog.Message("%s", filesSingle).Title("SD Files").Info()
 		}
 	}()
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
 	// Tray Menu Item : Turn off displays
 	go func() {
 		menuItemChan := d.AddMenuItem("Displays Off", "If the config reloads it will turn off all the displays")
@@ -170,10 +170,10 @@ func main() {
 			}
 		}
 	}()
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(2 * time.Millisecond)
 	// Tray Menu Item : Reconfig Displays
 	go func() {
-		menuItemChan := d.AddMenuItem("Displays On", "Turns on the displays to the images in the config")
+		menuItemChan := d.AddMenuItem("Displays Reload", "Turns on the displays to the images in the config")
 		menuItem := <-menuItemChan
 		for {
 			<-menuItem.ClickedCh
@@ -219,7 +219,7 @@ func main() {
 
 				sessionMap = d.GetSessionMap()
 				sliderMap = d.GetSliderMap()
-
+				if d.
 				loadDSPMapings(modlogger)
 
 				modlogger.Named("Serial").Debug("Flushing")
@@ -234,7 +234,7 @@ func main() {
 
 	go func() {
 		sessionReloadedChannel := d.SubscribeToSessionReload()
-		// configReloadedChannel := d.SubscribeToChanges()
+		configReloadedChannel := d.SubscribeToChanges()
 		// Wait till after startup
 		time.Sleep(15 * time.Second)
 		// Clear any reloads that were triggerd
@@ -248,28 +248,35 @@ func main() {
 		}
 
 		for {
+			switch {
+			case <-sessionReloadedChannel:
+				serial.Pause()
+				modlogger.Named("Display").Debug("Session Reload Detected")
+				loadDSPMapings(modlogger)
+				serial.Start()
 
-			// switch {
-			<-sessionReloadedChannel
-			serial.Pause()
-			modlogger.Named("Display").Debug("Session Reload Detected")
-			loadDSPMapings(modlogger)
-			serial.Start()
-
-			// Minimum deley bettween session reloads for serial
-			time.Sleep(1 * time.Second)
-			// Clear any reloads that were triggerd
-		Loop2:
-			for {
-				select {
-				case <-sessionReloadedChannel:
-				case <-time.After(20 * time.Millisecond):
-					break Loop2
+				// Minimum deley bettween session reloads for serial
+				time.Sleep(1 * time.Second)
+				// Clear any reloads that were triggerd
+			Loop2:
+				for {
+					select {
+					case <-sessionReloadedChannel:
+					case <-time.After(20 * time.Millisecond):
+						break Loop2
+					}
+				}
+			case <-configReloadedChannel: //If a session reloads was triggerd by a config reload ignore it and clear the states: Fixes a bug where there was a constant display refresh after config reload
+				time.Sleep(15 * time.Millisecond)
+			Loop3:
+				for {
+					select {
+					case <-sessionReloadedChannel:
+					case <-time.After(20 * time.Millisecond):
+						break Loop3
+					}
 				}
 			}
-			// case <-configReloadedChannel:
-			// 	time.Sleep(1 * time.Second)
-			// }
 		}
 	}()
 
