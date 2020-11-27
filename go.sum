@@ -145,6 +145,10 @@ github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4 h1:G2ztCwXov8mRv
 github.com/jacobsa/go-serial v0.0.0-20180131005756-15cf729a72d4/go.mod h1:2RvX5ZjVtsznNZPEt4xwJXNJrM3VTZoQf7V6gk0ysvs=
 github.com/jax-b/deej v0.9.10-update1 h1:8wd4aPvLjBp3TCwGIM6+o13SVhm2LCFdCA81tibZVVo=
 github.com/jax-b/deej v0.9.10-update1/go.mod h1:dMug7wG9Si2YQse+b5BGByjIajYEkwWqMgCR1ITOALs=
+github.com/jax-b/deej v0.9.10 h1:vC2asALc1YRg5msSbWj1dpxW+18AdSf0Y8roRMGUPUo=
+github.com/jax-b/deej v0.9.10/go.mod h1:XSRQyYA3tYCScjKLjjo3+kiNdYP1rd601lvf0y4ShP8=
+github.com/jax-b/deej v0.9.11-0.20201127032116-f768e4eedd63 h1:1NeVBZIwgcfsv2yHN5Oqa71lpVDZ6iMXVTXKu4dzdek=
+github.com/jax-b/deej v0.9.11-0.20201127032116-f768e4eedd63/go.mod h1:dMug7wG9Si2YQse+b5BGByjIajYEkwWqMgCR1ITOALs=
 github.com/jax-b/iconfinderapi v1.0.0 h1:C71l/exhg5QNQnX+ngQTiMWam0MY/gB1Ceb2VH1hFjs=
 github.com/jax-b/iconfinderapi v1.0.0/go.mod h1:n70TjTiwpJuEYz4hMrtq+OSpMB6dJ0a778U41CUgWqk=
 github.com/jax-b/ssd1306FilePrep v0.1.1 h1:eYjY8qD4is9F7m1rHZjUGRUNDLgo3j7YRjwCoogeWd4=

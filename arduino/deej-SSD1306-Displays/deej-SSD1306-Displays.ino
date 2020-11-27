@@ -320,6 +320,7 @@ void checkForCommand() {
 
 // SD Card List Files
 void sdPrintDirectory(File dir, int numTabs) {
+  Serial.println("__IGNORE_ME__");
   while (true) {
     File entry =  dir.openNextFile();
     if (! entry) {

@@ -74,22 +74,17 @@ func (serSD *SerialSD) ListDir() ([]string, error) {
 		c = nil
 	}
 	serSD.siu.PreformingTask()
+	serSD.sio.Flush(serSD.logger)
 
 	var returnText []string
+
 	var SerialData string
 	lineChannel := serSD.sio.ReadLine(serSD.logger)
 
-Loop1:
-	for {
-		select {
-		case <-lineChannel:
-		case <-time.After(time.Millisecond * 25):
-			break Loop1
-		}
-	}
+	time.Sleep(10 * time.Millisecond)
 
 	serSD.sio.WriteStringLine(serSD.logger, "deej.modules.sd.list")
-	time.Sleep(time.Millisecond * 5)
+
 Loop2:
 	for {
 		select {
@@ -100,6 +95,7 @@ Loop2:
 			SerialData = strings.Replace(SerialData, "\r", "", -1)
 			if SerialData == "DONE" {
 				break Loop2
+			} else if SerialData == "__IGNORE_ME__" {
 			} else {
 				returnText = append(returnText, SerialData)
 			}
@@ -107,6 +103,7 @@ Loop2:
 	}
 
 	lineChannel = nil
+	serSD.sio.Flush(serSD.logger)
 	if serSD.cmddelay > (time.Microsecond * 1) {
 		time.Sleep(serSD.cmddelay)
 	}
@@ -115,6 +112,7 @@ Loop2:
 		serSD.sio.Start()
 	}
 	serSD.siu.Done()
+	serSD.logger.Info(returnText)
 	return returnText, nil
 }
 

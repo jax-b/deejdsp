@@ -234,6 +234,7 @@ func main() {
 				loadDSPMapings(modlogger)
 
 				modlogger.Named("Serial").Debug("Flushing")
+
 				serial.Flush(modlogger)
 				// let the connection close
 				<-time.After(stopDelay)
