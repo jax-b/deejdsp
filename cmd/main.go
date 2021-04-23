@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jax-b/deej"
+	"github.com/jax-b/deej/pkg/deej"
 	"github.com/jax-b/deejdsp"
 	"github.com/jax-b/iconfinderapi"
 	"github.com/sqweek/dialog"

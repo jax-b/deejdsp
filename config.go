@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/jax-b/deej/util"
+	"github.com/jax-b/deej/pkg/deej/util"
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )

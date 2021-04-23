@@ -8,7 +8,7 @@ import (
 	"image/color"
 	"strings"
 
-	"github.com/jax-b/deej"
+	"github.com/jax-b/deej/pkg/deej"
 	"github.com/jax-b/iconfinderapi"
 	"github.com/jax-b/ssd1306FilePrep"
 	"github.com/nfnt/resize"

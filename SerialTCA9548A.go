@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jax-b/deej"
+	"github.com/jax-b/deej/pkg/deej"
 	"go.uber.org/zap"
 )
 
