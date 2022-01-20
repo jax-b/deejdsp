@@ -46,6 +46,7 @@ void setup() {
     pinMode(analogInputs[i], INPUT);
   }
   Wire.begin();
+  Wire.setClock(400000);
   Serial.begin(SERIALSPEED);
   Serial.setTimeout(SERIALTIMEOUT);
   Serial.print("INITBEGIN ");
